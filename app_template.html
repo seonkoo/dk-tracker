@@ -220,7 +220,7 @@ async function handleUpload(){
 function analyze(h){
   const days=h.days||[];
   const names=h.names||{};
-  const set=new Set(Object.keys(names));
+  const set=new Set();
   days.forEach(d=>{ (d.k||[]).forEach(c=>set.add(c)); (d.d||[]).forEach(c=>set.add(c)); });
   const latestMetrics = days.length ? (days[days.length-1].metrics||{}) : {};
   const timelines={};
