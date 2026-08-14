@@ -386,7 +386,7 @@ function render(){
   const q=document.getElementById('q').value.trim().toLowerCase();
   const tb=document.getElementById('tbody');
   const rows=DATA.rows.filter(r=>{
-    if(FILTER==='rev' && !r.reversals) return false;
+    if(FILTER==='rev' && r.reversals.length===0) return false;
     if(FILTER==='k' && r.current!=='K') return false;
     if(FILTER==='d' && r.current!=='D') return false;
     if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
