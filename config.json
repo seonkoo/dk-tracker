@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sheet": {
+    "code_col_candidates": ["代码", "股票代码", "证券代码", "股票代号", "code", "Code", "CODE"],
+    "name_col_candidates": ["名称", "股票名称", "证券名称", "name", "Name", "NAME"],
+    "header_row": 0
+  },
+  "file_naming": {
+    "k_pattern": "*_K.xlsx",
+    "d_pattern": "*_D.xlsx",
+    "date_in_filename_regex": "(\\d{4}-\\d{2}-\\d{2})",
+    "note": "建议每日命名 YYYY-MM-DD_K.xlsx / YYYY-MM-DD_D.xlsx；若文件名无日期则用 --date 指定"
+  },
+  "analysis": {
+    "reverse_pairs": [["K", "D"], ["D", "K"]],
+    "code_pad_to_6": true
+  },
+  "github_pages": {
+    "branch": "gh-pages",
+    "note": "静态网页部署到 gh-pages 分支根目录；Pages 源设为该分支 /(root)"
+  }
+}
