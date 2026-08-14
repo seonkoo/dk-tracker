@@ -19,6 +19,7 @@ import datetime
 import json
 import os
 import re
+import urllib.request
 
 try:
     from openpyxl import load_workbook
@@ -30,6 +31,11 @@ CONFIG_PATH = os.path.join(BASE, "config.json")
 RECORDS_PATH = os.path.join(BASE, "data", "records.json")
 STOCKS_PATH = os.path.join(BASE, "data", "stocks.json")
 HTML_PATH = os.path.join(BASE, "index.html")
+OBS_PATH = os.path.join(BASE, "data", "obs.json")
+APP_TEMPLATE_PATH = os.path.join(BASE, "app_template.html")
+OBS_WINDOW = 30            # 观察窗口（自然日）
+BENCH_SECID = "1.000985"   # 中证全指（前复权）
+BENCH_NAME = "中证全指"
 
 
 # ---------- 基础工具 ----------
@@ -291,6 +297,112 @@ def build_analysis(records, stocks, config):
     }
 
 
+# ---------- 观察池（首次D后30天涨跌幅，验证D参考性）----------
+def secid_of(code):
+    """沪市(6开头，含科创板688) -> 1.x；深市(0/3开头) -> 0.x。"""
+    return ("1." + code) if code.startswith("6") else ("0." + code)
+
+
+def fetch_kline(secid, beg, end):
+    """拉前复权日K线，返回 [{date, close}] 或 None（网络失败时）。"""
+    url = ("https://push2his.eastmoney.com/api/qt/stock/kline/get"
+           "?secid=%s&fields1=f1,f2,f3&fields2=f51,f53&klt=101&fqt=1&beg=%s&end=%s"
+           % (secid, beg, end))
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            b = json.loads(r.read().decode("utf-8", "ignore"))
+        data = b.get("data")
+        if not data or not data.get("klines"):
+            return None
+        out = []
+        for line in data["klines"]:
+            parts = line.split(",")
+            out.append({"date": parts[0], "close": float(parts[2])})
+        return out
+    except Exception as e:
+        print("  [价格] 拉取失败 %s: %s" % (secid, e))
+        return None
+
+
+def _close_on_or_before(klines, date):
+    best = None
+    for k in klines:
+        if k["date"] <= date:
+            best = k
+        else:
+            break
+    return best
+
+
+def build_obs(records, config):
+    """构建观察池：每只首次出现 D 的个股，计算其 D日收盘至今(<=30天)累计涨幅、同期基准涨幅、超额。"""
+    days = records.get("days", [])
+    if not days:
+        return {"updated": records.get("updated"), "benchmark": BENCH_NAME, "stocks": []}
+    today = datetime.date.today()
+    first_d = {}
+    for day in days:
+        for c in day.get("d", []):
+            if c not in first_d:
+                first_d[c] = day["date"]
+    names = load_json(STOCKS_PATH, {})
+    cache = {s["code"]: s for s in load_json(OBS_PATH, {}).get("stocks", [])}
+    bench_cache = None
+    result = []
+    for code, entry_date in first_d.items():
+        ed = datetime.date.fromisoformat(entry_date)
+        holding = (today - ed).days
+        exited = holding > OBS_WINDOW
+        cached = cache.get(code)
+        if cached and cached.get("exited"):
+            result.append(cached)  # 已流出则冻结，不再拉取
+            continue
+        klines = fetch_kline(secid_of(code), entry_date, today.isoformat())
+        if klines is None:
+            # 网络不可用：沿用缓存或占位，状态标「待同步」
+            ec = cached.get("entry_close") if cached else None
+            ret = cached.get("ret") if cached else None
+            br = cached.get("bench_ret") if cached else None
+            result.append({
+                "code": code, "name": names.get(code, ""), "entry_date": entry_date,
+                "entry_close": ec, "ret": ret, "bench_ret": br,
+                "excess": (ret - br) if (ret is not None and br is not None) else None,
+                "holding_days": holding, "exited": exited,
+                "status": "待同步" if ret is None else ("已流出" if exited else "活跃"),
+                "updated": today.isoformat(),
+            })
+            continue
+        ek = _close_on_or_before(klines, entry_date) or klines[0]
+        entry_close = ek["close"]
+        ret = klines[-1]["close"] / entry_close - 1
+        if bench_cache is None:
+            bench_cache = fetch_kline(BENCH_SECID, entry_date, today.isoformat())
+        bench_ret = None
+        if bench_cache:
+            b0 = _close_on_or_before(bench_cache, entry_date)
+            if b0:
+                bench_ret = bench_cache[-1]["close"] / b0["close"] - 1
+        result.append({
+            "code": code, "name": names.get(code, ""), "entry_date": entry_date,
+            "entry_close": entry_close, "ret": ret, "bench_ret": bench_ret,
+            "excess": (ret - bench_ret) if bench_ret is not None else None,
+            "holding_days": holding, "exited": exited,
+            "status": "已流出" if exited else "活跃",
+            "updated": today.isoformat(),
+        })
+    # 按累计涨幅降序（None 垫底）
+    result.sort(key=lambda x: (x["ret"] if x["ret"] is not None else -1e9), reverse=True)
+    obs = {"updated": today.isoformat(), "benchmark": BENCH_NAME, "stocks": result}
+    save_json(OBS_PATH, obs)
+    print("  [观察池] 首次D=%d  活跃=%d  已流出=%d  待同步=%d" % (
+        len(result), sum(1 for x in result if not x["exited"] and x["status"] != "待同步"),
+        sum(1 for x in result if x["exited"]),
+        sum(1 for x in result if x["status"] == "待同步")))
+    return obs
+
+
 # ---------- 生成网页 ----------
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -485,6 +597,72 @@ def write_html(html):
     print("  [生成] %s (%d 字节)" % (HTML_PATH, len(html)))
 
 
+def generate_app(records, stocks, obs, config):
+    """生成手机端上传应用（含观察池）。
+    为彻底规避 GitHub 连接器对超长行/内容的截断与「手工转义引号」出错风险：
+      - 种子数据 base64 切片为 seed_p1..N.js + seed_load.js
+      - 整个 app HTML 也 base64 切片为 app_p1..M.js + app_load.js（app_load 用 document.write 注入）
+      - 仓库里的 index.html 只做一个「壳」：顺序加载上述切片，自身几乎无引号、可安全推送
+    所有切片文件均为 quote-light（base64），便于通过连接器逐文件可靠推送。"""
+    import base64
+    CHUNK = 5000
+
+    def chunk_write(b64, prefix, var):
+        parts = [b64[i:i + CHUNK] for i in range(0, len(b64), CHUNK)]
+        for i, ch in enumerate(parts):
+            line = ('window.%s = "%s";\n' % (var, ch)) if i == 0 \
+                else ('window.%s += "%s";\n' % (var, ch))
+            with open(os.path.join(BASE, "%s%d.js" % (prefix, i + 1)), "w", encoding="utf-8") as f:
+                f.write(line)
+        return len(parts)
+
+    # 1) 种子数据切片
+    seed = {
+        "updated": records.get("updated"),
+        "days": records.get("days", []),
+        "names": stocks,
+        "obs": obs,
+    }
+    seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")
+    n = chunk_write(seed_b64, "seed_p", "__SEED_B64")
+    with open(os.path.join(BASE, "seed_load.js"), "w", encoding="utf-8") as f:
+        f.write('window.SEED_DATA = JSON.parse(new TextDecoder().decode('
+                'Uint8Array.from(atob(window.__SEED_B64), c => c.charCodeAt(0))));\n')
+
+    # 2) 整个 app HTML 切片（统一用绝对路径，根与 public 共用一套切片）
+    tpl = open(APP_TEMPLATE_PATH, "r", encoding="utf-8").read()
+    seed_tags = "".join('<script src="/seed_p%d.js"></script>' % (i + 1) for i in range(n)) \
+        + '<script src="/seed_load.js"></script>'
+    app_html = tpl.replace("__SEED__", "").replace("<!--SEED_SCRIPTS-->", seed_tags)
+    app_b64 = base64.b64encode(app_html.encode("utf-8")).decode("ascii")
+    m = chunk_write(app_b64, "app_p", "__APP_B64")
+    with open(os.path.join(BASE, "app_load.js"), "w", encoding="utf-8") as f:
+        f.write('document.open();document.write(new TextDecoder().decode('
+                'Uint8Array.from(atob(window.__APP_B64), c => c.charCodeAt(0))));'
+                'document.close();\n')
+
+    # 3) 壳 index.html（quote-light）：只按顺序加载切片
+    def shell():
+        s = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' \
+            '<title>DK 变化记录表</title>\n</head>\n<body>\n'
+        for i in range(n):
+            s += '<script src="/seed_p%d.js"></script>\n' % (i + 1)
+        s += '<script src="/seed_load.js"></script>\n'
+        for i in range(m):
+            s += '<script src="/app_p%d.js"></script>\n' % (i + 1)
+        s += '<script src="/app_load.js"></script>\n</body>\n</html>\n'
+        return s
+    for target in (os.path.join(BASE, "index.html"), os.path.join(BASE, "public", "index.html")):
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(shell())
+
+    # 清理旧的单文件
+    for old in (os.path.join(BASE, "seed.js"), os.path.join(BASE, "public", "seed.js")):
+        if os.path.exists(old):
+            os.remove(old)
+    print("  [生成] 壳 index.html + seed 切片 %d 个 + app 切片 %d 个 + 两个 loader" % (n, m))
+
+
 def print_summary(analysis):
     print(
         "  [汇总] 更新=%s 跟踪=%d 今日K=%d 今日D=%d 反转个股=%d 累计反转=%d"
@@ -553,7 +731,8 @@ def main():
         records = load_json(RECORDS_PATH, {"updated": None, "days": []})
         stocks = load_json(STOCKS_PATH, {})
         analysis = build_analysis(records, stocks, config)
-        write_html(render_html(analysis, config))
+        obs = build_obs(records, config)
+        generate_app(records, stocks, obs, config)
         print_summary(analysis)
         return
 
@@ -565,7 +744,8 @@ def main():
         records = load_json(RECORDS_PATH, {"updated": None, "days": []})
         stocks = load_json(STOCKS_PATH, {})
         analysis = build_analysis(records, stocks, config)
-        write_html(render_html(analysis, config))
+        obs = build_obs(records, config)
+        generate_app(records, stocks, obs, config)
         print_summary(analysis)
         return
 

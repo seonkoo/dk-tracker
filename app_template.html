@@ -121,14 +121,31 @@
   <tbody id="tbody"></tbody>
 </table>
 
+<div class="obs" id="obsbox" style="margin-top:22px;display:none">
+  <h2 style="font-size:16px;margin:0 0 4px">📊 D点观察池 · 首次D后30天涨跌幅</h2>
+  <div class="sub" id="obssub"></div>
+  <div class="cards" id="obscards" style="margin-bottom:12px"></div>
+  <table>
+    <thead><tr>
+      <th>代码</th><th>名称</th><th>首次D</th><th>持有天</th><th>累计涨幅%</th><th>基准%</th><th>超额%</th><th>状态</th>
+    </tr></thead>
+    <tbody id="obstbody"></tbody>
+  </table>
+  <div class="sub" style="margin-top:8px">
+    说明：首次出现 D 当天收盘为起点，统计其后 ≤30 自然日的累计涨幅，并与同期「中证全指」对比得超额。
+    满 30 天自动从活跃名单流出。价格由桌面端（有网）同步，手机上传不更新此项。
+  </div>
+</div>
+
 <div class="note">
   说明：本页在<b>浏览器本地</b>保存全部历史（localStorage）。手机上传后数据留在这台手机的这个浏览器里；
   换设备/清缓存会丢，请用「导出历史」备份、或「导入历史」迁移。<br>
   解析自动识别两种格式：① 选股导出（K点/D点 列值为「符合」的才是信号）；② 精简清单（整表每行都是信号，按文件名含 K/D 区分）。
 </div>
 
+<!--SEED_SCRIPTS-->
 <script>
-const SEED = __SEED__;
+const SEED = window.SEED_DATA || {days:[],names:{},obs:null};
 const LS_KEY = 'dk_history_v1';
 let FILTER = 'all';
 
@@ -352,8 +369,39 @@ function render(){
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
   }).join('');
+  renderObs();
 }
 function card(n,l,cls){ return '<div class="card '+(cls||'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+
+function fmtPct(x){ if(x==null) return '-'; const cls=x>0?'sK':(x<0?'sD':''); const s=(x>0?'+':'')+(x*100).toFixed(2); return '<span class="'+cls+'">'+s+'%</span>'; }
+function median(arr){ if(!arr.length) return null; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function obsCard(n,l){ return '<div class="card"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+function renderObs(){
+  const box=document.getElementById('obsbox');
+  const obs=SEED.obs;
+  if(!obs || !obs.stocks || !obs.stocks.length){ box.style.display='none'; return; }
+  box.style.display='';
+  const st=obs.stocks;
+  const active=st.filter(x=>!x.exited && x.status!=='待同步');
+  const exited=st.filter(x=>x.exited);
+  const pending=st.filter(x=>x.status==='待同步');
+  document.getElementById('obssub').textContent='基准：'+(obs.benchmark||'—')+' ｜ 最后计算：'+(obs.updated||'—')+'（由桌面端同步，手机上传不更新此项）';
+  const rets=st.map(x=>x.ret).filter(x=>x!=null);
+  const brs=st.map(x=>x.bench_ret).filter(x=>x!=null);
+  const exc=st.map(x=>x.excess).filter(x=>x!=null);
+  const win=rets.filter(x=>x>0).length;
+  const cards=document.getElementById('obscards');
+  cards.innerHTML = obsCard(active.length, '活跃')+obsCard(exited.length, '已流出')+obsCard(pending.length, '待同步')+
+    obsCard(fmtPct(median(rets)).replace(/<[^>]+>/g,''), '池内中位涨幅')+
+    obsCard((rets.length?Math.round(win/rets.length*100):'-')+'%', '胜率(上涨占比)')+
+    obsCard(fmtPct(median(exc)).replace(/<[^>]+>/g,''), '超额中位');
+  const tb=document.getElementById('obstbody');
+  tb.innerHTML=st.map(r=>{
+    const stt = r.exited? '<span class="badge bD">已流出</span>' : (r.status==='待同步'?'<span class="badge bSame">待同步</span>':'<span class="badge bK">活跃</span>');
+    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td class="tl">'+esc(r.entry_date)+'</td><td>'+r.holding_days+'</td>'+
+      '<td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td><td>'+fmtPct(r.excess)+'</td><td>'+stt+'</td></tr>';
+  }).join('');
+}
 
 function exportHistory(){ const h=loadHistory(); const blob=new Blob([JSON.stringify(h,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dk_history_'+(h.updated||'')+'.json'; a.click(); }

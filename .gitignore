@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
 _selftest.html
+_obs_preview.html
 .DS_Store
 incoming/
