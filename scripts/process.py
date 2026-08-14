@@ -87,7 +87,11 @@ def parse_date_from_filename(name, config):
 
 
 # ---------- 读取 xlsx ----------
-def read_xlsx(path, config):
+def read_xlsx(path, config, kind=None):
+    """读取一个 xlsx。
+    kind='K'/'D' 时优先按「选股格式」处理：找 K点/D点 列，值为「符合」的才是信号。
+    找不到标记列则按「精简清单格式」处理：整表每行都是信号。
+    """
     if load_workbook is None:
         raise SystemExit("[错误] 未安装 openpyxl，无法读取 xlsx。请先 pip install openpyxl。")
     wb = load_workbook(path, data_only=True)
@@ -105,10 +109,21 @@ def read_xlsx(path, config):
             "[错误] 在 %s 找不到代码列。\n表头: %s\n候选名: %s"
             % (os.path.basename(path), headers, config["sheet"]["code_col_candidates"])
         )
+    # 选股格式：K点/D点 列值为「符合」的才是信号
+    marker_i = None
+    if kind == "K":
+        marker_i = find_col(headers, ["K点"])
+    elif kind == "D":
+        marker_i = find_col(headers, ["D点"])
+    mode = "选股(符合筛选)" if marker_i is not None else "精简清单(整表)"
     out = []
     for r in rows[hr + 1:]:
         if not r or all(c is None for c in r):
             continue
+        if marker_i is not None:
+            v = r[marker_i]
+            if v is None or str(v).strip() != "符合":
+                continue
         raw = r[code_i]
         if raw is None:
             continue
@@ -123,13 +138,14 @@ def read_xlsx(path, config):
             except Exception:
                 metric = None
         out.append({"code": code, "name": name, "metric": metric})
+    print("  [统计] %s  解析模式=%s  命中=%d行" % (os.path.basename(path), mode, len(out)))
     return out
 
 
 # ---------- 处理一天 ----------
 def process_day(k_path, d_path, date, config):
-    k = read_xlsx(k_path, config)
-    d = read_xlsx(d_path, config)
+    k = read_xlsx(k_path, config, "K")
+    d = read_xlsx(d_path, config, "D")
     print("  [统计] %s  K表=%d行  D表=%d行" % (date, len(k), len(d)))
 
     stocks = load_json(STOCKS_PATH, {})
