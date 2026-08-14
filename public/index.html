@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DK 变化记录表</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --fg:#1c2024; --muted:#6b7280;
+    --line:#e5e7eb; --k:#dc2626; --d:#16a34a; --warn:#b45309; --warnbg:#fffbeb;
+    --accent:#2563eb;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1115; --card:#171a21; --fg:#e8eaed; --muted:#9aa3af;
+      --line:#262b33; --k:#f87171; --d:#4ade80; --warn:#fbbf24; --warnbg:#2a2113;
+      --accent:#60a5fa;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.5;padding:16px;max-width:960px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  @media(max-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .card .n{font-size:22px;font-weight:700}
+  .card .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .card.k .n{color:var(--k)} .card.d .n{color:var(--d)}
+  .warnbox{background:var(--warnbg);border:1px solid var(--warn);border-radius:12px;
+    padding:12px 14px;margin-bottom:18px}
+  .warnbox h2{font-size:15px;margin:0 0 8px;color:var(--warn)}
+  .witem{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 0;
+    border-top:1px dashed var(--line);font-size:14px}
+  .witem:first-of-type{border-top:none}
+  .badge{font-size:11px;padding:1px 7px;border-radius:999px;font-weight:700}
+  .bK{background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
+  .bD{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d)}
+  .bSame{background:var(--warn);color:#fff}
+  .arrow{color:var(--muted);font-weight:700}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .controls input{flex:1;min-width:160px;padding:8px 10px;border-radius:9px;
+    border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:14px}
+  .controls button{padding:8px 12px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);font-size:13px;cursor:pointer}
+  .controls button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card)}
+  tr:last-child td{border-bottom:none}
+  td.wrap{white-space:normal}
+  .sK{color:var(--k);font-weight:700} .sD{color:var(--d);font-weight:700}
+  .tl{color:var(--muted);font-size:12px}
+  .empty{color:var(--muted);padding:20px;text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>DK 变化记录表</h1>
+<div class="sub">最后更新：2026-08-14 ｜ K→D / D→K 反转自动置顶预警</div>
+
+<div class="cards" id="cards"></div>
+<div class="warnbox" id="warnbox">
+  <h2>⚠ 反转预警（重点提示）</h2>
+  <div id="warns"></div>
+</div>
+
+<div class="controls">
+  <input id="q" placeholder="搜索代码 / 名称…" oninput="render()">
+  <button id="f_all" class="on" onclick="setF('all',this)">全部</button>
+  <button id="f_rev" onclick="setF('rev',this)">仅反转</button>
+  <button id="f_k" onclick="setF('k',this)">当前K</button>
+  <button id="f_d" onclick="setF('d',this)">当前D</button>
+</div>
+
+<table>
+  <thead><tr>
+    <th>代码</th><th>名称</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
+    <th>K</th><th>D</th><th>反转</th><th>连续</th><th>状态时间线</th>
+  </tr></thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<script>
+const DATA = {"updated": "2026-08-14", "today": "2026-08-14", "today_k": ["000002", "000027", "000333", "000400", "000408", "000582", "000617", "000791", "000807", "000858", "000876", "000987", "000999", "002027", "002074", "002152", "002236", "002271", "002415", "002423", "002673", "002797", "002895", "003035", "300015", "300059", "300251", "300413", "300896", "301638", "600021", "600150", "600276", "600292", "600352", "600390", "600406", "600436", "600517", "600598", "600688", "600732", "600845", "600871", "600918", "600956", "600995", "601168", "601236", "601399", "601677", "601878", "601888", "601990", "603605", "688256", "688349"], "today_d": ["002254", "002700", "002876", "003031", "300400", "301203", "301358", "301489", "600558", "601077", "601088", "603089", "603303", "603390", "603439", "603718", "603990", "688029", "688163", "688275", "688286", "688379", "688381", "688589", "688981", "920026", "920083"], "total_stocks": 84, "total_reversals": 0, "stocks_with_reversal": 0, "rows": [{"code": "688286", "name": "敏芯股份", "metric": 13.67, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "003035", "name": "南网能源", "metric": -4.09, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "000807", "name": "云铝股份", "metric": -0.93, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002895", "name": "川恒股份", "metric": -1.01, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688981", "name": "中芯国际", "metric": 2.23, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000582", "name": "北部湾港", "metric": -9.29, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300413", "name": "芒果超媒", "metric": -1.59, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "601088", "name": "中国神华", "metric": 1.13, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000002", "name": "万  科Ａ", "metric": -2.8, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002423", "name": "中粮资本", "metric": -1.11, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600276", "name": "恒瑞医药", "metric": -2.88, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688349", "name": "三一重能", "metric": -1.64, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603390", "name": "通达电气", "metric": 1.17, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "600558", "name": "大西洋", "metric": 2.71, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "600021", "name": "上海电力", "metric": -2.96, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "000617", "name": "中油资本", "metric": -1.15, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600352", "name": "浙江龙盛", "metric": -4.86, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603605", "name": "珀莱雅", "metric": -1.64, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "601677", "name": "明泰铝业", "metric": -1.4, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "000999", "name": "华润三九", "metric": -1.32, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600390", "name": "五矿资本", "metric": -0.82, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600598", "name": "北大荒", "metric": -1.91, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002254", "name": "泰和新材", "metric": 1.04, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "600150", "name": "中国船舶", "metric": -1.1, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603303", "name": "得邦照明", "metric": 1.34, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000791", "name": "甘肃能源", "metric": -4.06, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300251", "name": "光线传媒", "metric": -2.74, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600956", "name": "新天绿能", "metric": -1.52, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002027", "name": "分众传媒", "metric": -3.07, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603718", "name": "*ST海利", "metric": 2.78, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "301638", "name": "南网数字", "metric": -4.11, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "301203", "name": "国泰环保", "metric": 3.25, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000876", "name": "新 希 望", "metric": -2.3, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300400", "name": "劲拓股份", "metric": 0.96, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "601168", "name": "西部矿业", "metric": -0.74, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300059", "name": "东方财富", "metric": -1.47, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688379", "name": "华光新材", "metric": 9.53, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "601236", "name": "红塔证券", "metric": -0.72, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002236", "name": "大华股份", "metric": -0.85, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688275", "name": "万润新能", "metric": 2.07, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "688163", "name": "赛伦生物", "metric": 0.67, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000987", "name": "越秀资本", "metric": -1.17, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "003031", "name": "中瓷电子", "metric": 5.19, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "601878", "name": "浙商证券", "metric": -1.38, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688029", "name": "南微医学", "metric": 1.33, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "002876", "name": "三利谱", "metric": 3.04, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000858", "name": "五 粮 液", "metric": -1.7, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "920083", "name": "金戈新材", "metric": 21.2, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "600995", "name": "南网储能", "metric": -1.82, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600436", "name": "片仔癀", "metric": -0.87, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "601990", "name": "南京证券", "metric": -0.89, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "000333", "name": "美的集团", "metric": -0.97, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "000408", "name": "藏格矿业", "metric": -2.41, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002673", "name": "西部证券", "metric": -0.9, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600732", "name": "爱旭股份", "metric": -2.96, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300015", "name": "爱尔眼科", "metric": -0.68, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002152", "name": "广电运通", "metric": -1.68, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603990", "name": "麦迪科技", "metric": 2.56, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "688256", "name": "寒武纪", "metric": -2.31, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "688589", "name": "力合微", "metric": 5.7, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "601888", "name": "中国中免", "metric": -1.58, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600517", "name": "国网英大", "metric": -0.6, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002271", "name": "东方雨虹", "metric": -2.86, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600292", "name": "电投水电", "metric": -1.83, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "301358", "name": "湖南裕能", "metric": 3.58, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "688381", "name": "帝奥微", "metric": 1.32, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "603439", "name": "三力制药", "metric": 3.48, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000027", "name": "深圳能源", "metric": -1.58, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002074", "name": "国轩高科", "metric": -0.48, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002700", "name": "万憬能源", "metric": 0.66, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "301489", "name": "思泉新材", "metric": 13.23, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "920026", "name": "卓兆点胶", "metric": 4.0, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "002797", "name": "第一创业", "metric": -1.37, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "601077", "name": "渝农商行", "metric": 1.38, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "000400", "name": "许继电气", "metric": -1.3, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "603089", "name": "正裕工业", "metric": 10.05, "nK": 0, "nD": 1, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "D", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "D"}]}, {"code": "600845", "name": "宝信软件", "metric": -2.0, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600688", "name": "上海石化", "metric": -0.72, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600871", "name": "石化油服", "metric": -0.92, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600918", "name": "中泰证券", "metric": -1.78, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "002415", "name": "海康威视", "metric": -2.89, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "600406", "name": "国电南瑞", "metric": -1.98, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "601399", "name": "国机重装", "metric": -1.23, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}, {"code": "300896", "name": "爱美客", "metric": -2.41, "nK": 1, "nD": 0, "first_date": "2026-08-14", "last_date": "2026-08-14", "current": "K", "reversals": [], "n_reversals": 0, "latest_reversal": null, "trailing": 1, "timeline": [{"date": "2026-08-14", "state": "K"}]}]};
+let FILTER = "all";
+
+function setF(v,el){
+  FILTER=v;
+  document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  render();
+}
+function esc(s){return (s==null?'':String(s));}
+function fmtMetric(m){
+  if(m==null) return '-';
+  const cls = m>0?'sK':(m<0?'sD':'');
+  const sign = m>0?'+':'';
+  return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>';
+}
+function stateBadge(s){
+  if(s==='K') return '<span class="badge bK">K</span>';
+  if(s==='D') return '<span class="badge bD">D</span>';
+  return '';
+}
+function tlText(tl){
+  return tl.map(e=>{
+    const m=e.date.slice(5);
+    return (e.state==='K'?'<span class=sK>K</span>':'<span class=sD>D</span>')+'<span class=tl>'+m+'</span>';
+  }).join(' → ');
+}
+function render(){
+  // cards
+  const c=document.getElementById('cards');
+  c.innerHTML=
+    card(DATA.total_stocks,'跟踪个股')+
+    card(DATA.today_k.length,'今日 K', 'k')+
+    card(DATA.today_d.length,'今日 D', 'd')+
+    card(DATA.stocks_with_reversal,'反转个股');
+  // warns
+  const warns=DATA.rows.filter(r=>r.latest_reversal);
+  const w=document.getElementById('warns');
+  if(!warns.length){w.innerHTML='<div class="empty">暂无反转记录</div>';}
+  else{
+    w.innerHTML=warns.map(r=>{
+      const lr=r.latest_reversal;
+      const sd=lr.same_day?' <span class="badge bSame">同日</span>':'';
+      const dir=(lr.from==='K'?'K→D':'D→K');
+      return '<div class="witem">'+stateBadge(lr.from)+'<span class="arrow">→</span>'+
+        stateBadge(lr.to)+sd+' '+
+        '<b>'+esc(r.code)+'</b> '+esc(r.name)+' '+
+        '<span class="tl">'+lr.from_date+' → '+lr.to_date+'</span>'+
+        '<span class="tl">（累计反转 '+r.n_reversals+' 次）</span></div>';
+    }).join('');
+  }
+  // table
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const tb=document.getElementById('tbody');
+  const rows=DATA.rows.filter(r=>{
+    if(FILTER==='rev' && r.reversals.length===0) return false;
+    if(FILTER==='k' && r.current!=='K') return false;
+    if(FILTER==='d' && r.current!=='D') return false;
+    if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if(!rows.length){tb.innerHTML='<tr><td colspan="11" class="empty">无匹配</td></tr>';return;}
+  tb.innerHTML=rows.map(r=>{
+    const cur=r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
+    const rev=r.latest_reversal?('<b style="color:var(--warn)">'+(r.latest_reversal.from==='K'?'K→D':'D→K')+'</b>'):'-';
+    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
+      '<td class="tl">'+esc(r.first_date)+'</td><td class="tl">'+esc(r.last_date)+'</td>'+
+      '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
+      '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
+  }).join('');
+}
+function card(n,l,cls){return '<div class="card '+(cls||'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';}
+render();
+</script>
+</body>
+</html>
