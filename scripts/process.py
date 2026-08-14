@@ -103,8 +103,10 @@ def parse_cap(val):
         return num
     if unit == "万":
         return num / 1e4
-    if unit in ("千亿", "万亿"):
+    if unit == "千亿":
         return num * 1000.0
+    if unit == "万亿":
+        return num * 10000.0
     return num / 1e8  # 裸数字视为「元」
 
 
@@ -631,8 +633,8 @@ def generate_app(records, stocks, obs, config):
 
     # 2) 整个 app HTML 切片（统一用绝对路径，根与 public 共用一套切片）
     tpl = open(APP_TEMPLATE_PATH, "r", encoding="utf-8").read()
-    seed_tags = "".join('<script src="/seed_p%d.js"></script>' % (i + 1) for i in range(n)) \
-        + '<script src="/seed_load.js"></script>'
+    seed_tags = "".join('<script src="seed_p%d.js"></script>' % (i + 1) for i in range(n)) \
+        + '<script src="seed_load.js"></script>'
     app_html = tpl.replace("__SEED__", "").replace("<!--SEED_SCRIPTS-->", seed_tags)
     app_b64 = base64.b64encode(app_html.encode("utf-8")).decode("ascii")
     m = chunk_write(app_b64, "app_p", "__APP_B64")
@@ -642,19 +644,20 @@ def generate_app(records, stocks, obs, config):
                 'document.close();\n')
 
     # 3) 壳 index.html（quote-light）：只按顺序加载切片
-    def shell():
+    def shell(prefix=""):
         s = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' \
             '<title>DK 变化记录表</title>\n</head>\n<body>\n'
         for i in range(n):
-            s += '<script src="/seed_p%d.js"></script>\n' % (i + 1)
-        s += '<script src="/seed_load.js"></script>\n'
+            s += '<script src="%sseed_p%d.js"></script>\n' % (prefix, i + 1)
+        s += '<script src="%sseed_load.js"></script>\n' % prefix
         for i in range(m):
-            s += '<script src="/app_p%d.js"></script>\n' % (i + 1)
-        s += '<script src="/app_load.js"></script>\n</body>\n</html>\n'
+            s += '<script src="%sapp_p%d.js"></script>\n' % (prefix, i + 1)
+        s += '<script src="%sapp_load.js"></script>\n</body>\n</html>\n' % prefix
         return s
-    for target in (os.path.join(BASE, "index.html"), os.path.join(BASE, "public", "index.html")):
+    for target, prefix in ((os.path.join(BASE, "index.html"), ""),
+                           (os.path.join(BASE, "public", "index.html"), "../")):
         with open(target, "w", encoding="utf-8") as f:
-            f.write(shell())
+            f.write(shell(prefix))
 
     # 清理旧的单文件
     for old in (os.path.join(BASE, "seed.js"), os.path.join(BASE, "public", "seed.js")):
