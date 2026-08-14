@@ -52,11 +52,20 @@ def save_json(path, obj):
 
 def find_col(headers, candidates):
     low = {h.lower(): i for i, h in enumerate(headers) if h}
+    # 1) 精确匹配
     for c in candidates:
         if c in low:
             return low[c]
         if c.lower() in low:
             return low[c.lower()]
+    # 2) 子串回退（兼容「涨跌幅(13:25)」这类带后缀表头）
+    for c in candidates:
+        cl = c.lower()
+        if not cl:
+            continue
+        for h, i in low.items():
+            if cl in h:
+                return i
     return None
 
 
@@ -160,6 +169,7 @@ def build_analysis(records, stocks, config):
         stocks_set.update(day.get("k", []))
         stocks_set.update(day.get("d", []))
 
+    latest_metrics = days[-1].get("metrics", {}) if days else {}
     timelines = {}
     for code in stocks_set:
         tl = []
@@ -177,11 +187,12 @@ def build_analysis(records, stocks, config):
         nD = sum(1 for e in tl if e["state"] == "D")
         reversals = []
         for a, b in zip(tl, tl[1:]):
-            if a["state"] != b["state"]:
+            # 仅跨天状态变化算「反转」；同日既K又D视为口径冲突，不计入预警
+            if a["state"] != b["state"] and a["date"] != b["date"]:
                 reversals.append({
                     "from": a["state"], "to": b["state"],
                     "from_date": a["date"], "to_date": b["date"],
-                    "same_day": a["date"] == b["date"],
+                    "same_day": False,
                 })
         total_reversals += len(reversals)
         last = tl[-1] if tl else None
@@ -197,6 +208,7 @@ def build_analysis(records, stocks, config):
         rows.append({
             "code": code,
             "name": stocks.get(code, ""),
+            "metric": latest_metrics.get(code),
             "nK": nK, "nD": nD,
             "first_date": first["date"] if first else None,
             "last_date": last["date"] if last else None,
@@ -312,7 +324,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <table>
   <thead><tr>
-    <th>代码</th><th>名称</th><th>当前</th><th>首现</th><th>末次</th>
+    <th>代码</th><th>名称</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
     <th>K</th><th>D</th><th>反转</th><th>连续</th><th>状态时间线</th>
   </tr></thead>
   <tbody id="tbody"></tbody>
@@ -329,6 +341,12 @@ function setF(v,el){
   render();
 }
 function esc(s){return (s==null?'':String(s));}
+function fmtMetric(m){
+  if(m==null) return '-';
+  const cls = m>0?'sK':(m<0?'sD':'');
+  const sign = m>0?'+':'';
+  return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>';
+}
 function stateBadge(s){
   if(s==='K') return '<span class="badge bK">K</span>';
   if(s==='D') return '<span class="badge bD">D</span>';
@@ -374,11 +392,11 @@ function render(){
     if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
     return true;
   });
-  if(!rows.length){tb.innerHTML='<tr><td colspan="10" class="empty">无匹配</td></tr>';return;}
+  if(!rows.length){tb.innerHTML='<tr><td colspan="11" class="empty">无匹配</td></tr>';return;}
   tb.innerHTML=rows.map(r=>{
     const cur=r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
     const rev=r.latest_reversal?('<b style="color:var(--warn)">'+(r.latest_reversal.from==='K'?'K→D':'D→K')+'</b>'):'-';
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+cur+'</td>'+
+    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
       '<td class="tl">'+esc(r.first_date)+'</td><td class="tl">'+esc(r.last_date)+'</td>'+
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
