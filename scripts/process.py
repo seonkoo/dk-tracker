@@ -78,6 +78,30 @@ def normalize_code(val, pad):
     return s
 
 
+def parse_cap(val):
+    """把「总市值」列文本（如 '230.24亿' / '4.14亿' / '12.3万'）解析为 亿元 数值。无则返回 None。"""
+    if val is None:
+        return None
+    s = str(val).strip().replace(",", "").replace("，", "")
+    if not s:
+        return None
+    m = re.match(r"^([\d.]+)\s*(千亿|万亿|亿|万)?", s)
+    if not m:
+        return None
+    try:
+        num = float(m.group(1))
+    except ValueError:
+        return None
+    unit = m.group(2)
+    if unit == "亿":
+        return num
+    if unit == "万":
+        return num / 1e4
+    if unit in ("千亿", "万亿"):
+        return num * 1000.0
+    return num / 1e8  # 裸数字视为「元」
+
+
 def parse_date_from_filename(name, config):
     rx = config.get("file_naming", {}).get("date_in_filename_regex")
     if not rx:
@@ -104,6 +128,7 @@ def read_xlsx(path, config, kind=None):
     code_i = find_col(headers, config["sheet"]["code_col_candidates"])
     name_i = find_col(headers, config["sheet"].get("name_col_candidates", []))
     metric_i = find_col(headers, config["sheet"].get("metric_col_candidates", []))
+    cap_i = find_col(headers, config["sheet"].get("cap_col_candidates", []))
     if code_i is None:
         raise SystemExit(
             "[错误] 在 %s 找不到代码列。\n表头: %s\n候选名: %s"
@@ -137,8 +162,10 @@ def read_xlsx(path, config, kind=None):
                 metric = float(r[metric_i])
             except Exception:
                 metric = None
-        out.append({"code": code, "name": name, "metric": metric})
-    print("  [统计] %s  解析模式=%s  命中=%d行" % (os.path.basename(path), mode, len(out)))
+        cap = parse_cap(r[cap_i]) if cap_i is not None else None
+        out.append({"code": code, "name": name, "metric": metric, "cap": cap})
+    print("  [统计] %s  解析模式=%s  命中=%d行  含市值=%d行" % (
+        os.path.basename(path), mode, len(out), sum(1 for x in out if x["cap"] is not None)))
     return out
 
 
@@ -157,11 +184,14 @@ def process_day(k_path, d_path, date, config):
     k_codes = sorted({i["code"] for i in k})
     d_codes = sorted({i["code"] for i in d})
     metrics = {}
+    caps = {}
     for i in k + d:
         if i["code"] and i["metric"] is not None:
             metrics[i["code"]] = i["metric"]
+        if i["code"] and i["cap"] is not None:
+            caps[i["code"]] = i["cap"]
 
-    day = {"date": date, "k": k_codes, "d": d_codes, "metrics": metrics}
+    day = {"date": date, "k": k_codes, "d": d_codes, "metrics": metrics, "caps": caps}
 
     records = load_json(RECORDS_PATH, {"updated": None, "days": []})
     before = len(records.get("days", []))
@@ -186,6 +216,7 @@ def build_analysis(records, stocks, config):
         stocks_set.update(day.get("d", []))
 
     latest_metrics = days[-1].get("metrics", {}) if days else {}
+    latest_caps = days[-1].get("caps", {}) if days else {}
     timelines = {}
     for code in stocks_set:
         tl = []
@@ -225,6 +256,7 @@ def build_analysis(records, stocks, config):
             "code": code,
             "name": stocks.get(code, ""),
             "metric": latest_metrics.get(code),
+            "cap": latest_caps.get(code),
             "nK": nK, "nD": nD,
             "first_date": first["date"] if first else None,
             "last_date": last["date"] if last else None,
@@ -336,11 +368,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <button id="f_rev" onclick="setF('rev',this)">仅反转</button>
   <button id="f_k" onclick="setF('k',this)">当前K</button>
   <button id="f_d" onclick="setF('d',this)">当前D</button>
+  <select id="sort" onchange="render()" style="padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:13px">
+    <option value="cap_desc">市值↓ 大→小</option>
+    <option value="cap_asc">市值↑ 小→大</option>
+    <option value="rev">反转优先</option>
+    <option value="code">代码</option>
+  </select>
 </div>
 
 <table>
   <thead><tr>
-    <th>代码</th><th>名称</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
+    <th>代码</th><th>名称</th><th>市值</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
     <th>K</th><th>D</th><th>反转</th><th>连续</th><th>状态时间线</th>
   </tr></thead>
   <tbody id="tbody"></tbody>
@@ -362,6 +400,15 @@ function fmtMetric(m){
   const cls = m>0?'sK':(m<0?'sD':'');
   const sign = m>0?'+':'';
   return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>';
+}
+function fmtCap(c){ if(c==null) return '-'; if(c>=10000) return (c/10000).toFixed(2)+'万亿'; return c.toFixed(2)+'亿'; }
+function sortRows(rows){
+  const v=document.getElementById('sort').value; const a=[...rows];
+  if(v==='cap_desc') a.sort((x,y)=>(y.cap||0)-(x.cap||0));
+  else if(v==='cap_asc') a.sort((x,y)=>(x.cap||0)-(y.cap||0));
+  else if(v==='rev') a.sort((x,y)=>((y.latest_reversal?1:0)-(x.latest_reversal?1:0))||((y.last_date||'')<(x.last_date||'')?1:-1));
+  else a.sort((x,y)=>x.code<y.code?-1:(x.code>y.code?1:0));
+  return a;
 }
 function stateBadge(s){
   if(s==='K') return '<span class="badge bK">K</span>';
@@ -408,11 +455,11 @@ function render(){
     if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
     return true;
   });
-  if(!rows.length){tb.innerHTML='<tr><td colspan="11" class="empty">无匹配</td></tr>';return;}
-  tb.innerHTML=rows.map(r=>{
+  if(!rows.length){tb.innerHTML='<tr><td colspan="12" class="empty">无匹配</td></tr>';return;}
+  tb.innerHTML=sortRows(rows).map(r=>{
     const cur=r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
     const rev=r.latest_reversal?('<b style="color:var(--warn)">'+(r.latest_reversal.from==='K'?'K→D':'D→K')+'</b>'):'-';
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
+    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+fmtCap(r.cap)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
       '<td class="tl">'+esc(r.first_date)+'</td><td class="tl">'+esc(r.last_date)+'</td>'+
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';

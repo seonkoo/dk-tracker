@@ -105,11 +105,17 @@
   <button id="f_rev" onclick="setF('rev',this)">仅反转</button>
   <button id="f_k" onclick="setF('k',this)">当前K</button>
   <button id="f_d" onclick="setF('d',this)">当前D</button>
+  <select id="sort" onchange="render()" style="padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:13px">
+    <option value="cap_desc">市值↓ 大→小</option>
+    <option value="cap_asc">市值↑ 小→大</option>
+    <option value="rev">反转优先</option>
+    <option value="code">代码</option>
+  </select>
 </div>
 
 <table>
   <thead><tr>
-    <th>代码</th><th>名称</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
+    <th>代码</th><th>名称</th><th>市值</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
     <th>K</th><th>D</th><th>反转</th><th>连续</th><th>状态时间线</th>
   </tr></thead>
   <tbody id="tbody"></tbody>
@@ -149,6 +155,18 @@ function normCode(v){
   if(/^\d+$/.test(s)) s = s.padStart(6,'0');
   return s;
 }
+function parseCap(v){
+  if(v==null) return null;
+  let s=String(v).trim().replace(/,/g,'');
+  const m=s.match(/([\d.]+)\s*(千亿|万亿|亿|万)?/);
+  if(!m) return null;
+  const n=parseFloat(m[1]); if(isNaN(n)) return null;
+  const u=m[2];
+  if(u==='亿') return n;
+  if(u==='万') return n/1e4;
+  if(u==='千亿'||u==='万亿') return n*1000;
+  return n/1e8;
+}
 function detectDate(...names){
   for(const n of names){
     let m = (n||'').match(/(\d{4}-\d{2}-\d{2})/); if(m) return m[1];
@@ -171,11 +189,12 @@ async function parseFile(file, kindHint){
   const code_i = findCol(headers,['代码','股票代码','证券代码','code']);
   const name_i = findCol(headers,['名称','股票名称','证券名称','name']);
   const metric_i = findCol(headers,['涨跌幅','涨幅','pct','涨跌幅%','涨跌幅(%)']);
+  const cap_i = findCol(headers,['总市值','流通市值','市值','总市值(日线不复权)','MarketCap','market_cap']);
   const kpt = findCol(headers,['K点']); const dpt = findCol(headers,['D点']);
   let marker_i=null, kind=kindHint;
   if(kpt!=null){ marker_i=kpt; kind='K'; }
   else if(dpt!=null){ marker_i=dpt; kind='D'; }
-  const codes=new Set(); const metrics={}; const names={};
+  const codes=new Set(); const metrics={}; const names={}; const caps={};
   for(let i=hr+1;i<rows.length;i++){
     const r=rows[i]; if(!r || r.every(c=>c==null)) continue;
     if(marker_i!=null){ const v=r[marker_i]; if(v==null || String(v).trim()!=='符合') continue; }
@@ -184,9 +203,10 @@ async function parseFile(file, kindHint){
     const nm = (name_i!=null && r[name_i]!=null) ? String(r[name_i]).trim() : '';
     if(nm) names[code]=nm;
     if(metric_i!=null && r[metric_i]!=null){ const m=parseFloat(String(r[metric_i]).replace('%','')); if(!isNaN(m)) metrics[code]=m; }
+    if(cap_i!=null && r[cap_i]!=null){ const c=parseCap(r[cap_i]); if(c!=null) caps[code]=c; }
     codes.add(code);
   }
-  return {kind, codes:[...codes], metrics, names, mode: marker_i!=null?'选股(符合)':'清单'};
+  return {kind, codes:[...codes], metrics, names, caps, mode: marker_i!=null?'选股(符合)':'清单'};
 }
 
 async function onPick(){ /* 占位：选择后状态提示 */ }
@@ -207,8 +227,9 @@ async function handleUpload(){
     const h=loadHistory();
     const days=(h.days||[]).filter(d=>d.date!==date);
     const metrics={...((kData||{}).metrics||{}), ...((dData||{}).metrics||{})};
+    const caps={...((kData||{}).caps||{}), ...((dData||{}).caps||{})};
     const names={...((kData||{}).names||{}), ...((dData||{}).names||{})};
-    days.push({date, k:kArr, d:dArr, metrics});
+    days.push({date, k:kArr, d:dArr, metrics, caps});
     days.sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));
     h.days=days; h.updated=date; h.names={...h.names,...names};
     saveHistory(h);
@@ -223,6 +244,7 @@ function analyze(h){
   const set=new Set();
   days.forEach(d=>{ (d.k||[]).forEach(c=>set.add(c)); (d.d||[]).forEach(c=>set.add(c)); });
   const latestMetrics = days.length ? (days[days.length-1].metrics||{}) : {};
+  const latestCaps = days.length ? (days[days.length-1].caps||{}) : {};
   const timelines={};
   set.forEach(code=>{
     const tl=[];
@@ -245,7 +267,7 @@ function analyze(h){
     totalRev+=reversals.length;
     const last=tl[tl.length-1]||null, first=tl[0]||null;
     let cons=1; for(let i=tl.length-1;i>0;i--){ if(tl[i].state===tl[i-1].state) cons++; else break; }
-    rows.push({code,name:names[code]||'',metric:latestMetrics[code],nK,nD,
+    rows.push({code,name:names[code]||'',metric:latestMetrics[code],cap:latestCaps[code],nK,nD,
       first_date:first?first.date:null,last_date:last?last.date:null,
       current:last?last.state:null,reversals,n_reversals:reversals.length,
       latest_reversal:reversals.length?reversals[reversals.length-1]:null,trailing:cons,timeline:tl});
@@ -265,6 +287,15 @@ function analyze(h){
 function setF(v,el){ FILTER=v; document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); render(); }
 function esc(s){ return (s==null?'':String(s)); }
 function fmtMetric(m){ if(m==null) return '-'; const cls=m>0?'sK':(m<0?'sD':''); const sign=m>0?'+':''; return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>'; }
+function fmtCap(c){ if(c==null) return '-'; if(c>=10000) return (c/10000).toFixed(2)+'万亿'; return c.toFixed(2)+'亿'; }
+function sortRows(rows){
+  const v=document.getElementById('sort').value; const a=[...rows];
+  if(v==='cap_desc') a.sort((x,y)=>(y.cap||0)-(x.cap||0));
+  else if(v==='cap_asc') a.sort((x,y)=>(x.cap||0)-(y.cap||0));
+  else if(v==='rev') a.sort((x,y)=>((y.latest_reversal?1:0)-(x.latest_reversal?1:0))||((y.last_date||'')<(x.last_date||'')?1:-1));
+  else a.sort((x,y)=>x.code<y.code?-1:(x.code>y.code?1:0));
+  return a;
+}
 function stateBadge(s){ if(s==='K') return '<span class="badge bK">K</span>'; if(s==='D') return '<span class="badge bD">D</span>'; return ''; }
 function tlText(tl){ return tl.map(e=>{ const m=e.date.slice(5); return (e.state==='K'?'<span class=sK>K</span>':'<span class=sD>D</span>')+'<span class=tl>'+m+'</span>'; }).join(' → '); }
 
@@ -290,11 +321,11 @@ function render(){
     if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
     return true;
   });
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="11" class="empty">无匹配</td></tr>'; return; }
-  tb.innerHTML=rows.map(r=>{
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="12" class="empty">无匹配</td></tr>'; return; }
+  tb.innerHTML=sortRows(rows).map(r=>{
     const cur=r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
     const rev=r.latest_reversal?('<b style="color:var(--warn)">'+(r.latest_reversal.from==='K'?'K→D':'D→K')+'</b>'):'-';
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
+    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+fmtCap(r.cap)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
       '<td class="tl">'+esc(r.first_date)+'</td><td class="tl">'+esc(r.last_date)+'</td>'+
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';

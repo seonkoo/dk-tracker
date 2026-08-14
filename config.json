@@ -4,6 +4,7 @@
     "code_col_candidates": ["代码", "股票代码", "证券代码", "股票代号", "code", "Code", "CODE"],
     "name_col_candidates": ["名称", "股票名称", "证券名称", "name", "Name", "NAME"],
     "metric_col_candidates": ["涨跌幅", "涨幅", "pct", "PCT", "涨跌幅%", "涨跌幅(%)"],
+    "cap_col_candidates": ["总市值", "流通市值", "市值", "总市值(日线不复权)", "MarketCap", "market_cap"],
     "header_row": 0
   },
   "file_naming": {
