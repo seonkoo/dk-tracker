@@ -134,9 +134,31 @@ let FILTER = 'all';
 
 function loadHistory(){
   const raw = localStorage.getItem(LS_KEY);
-  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
-  const h = {updated:SEED.updated, days:(SEED.days||[]).map(d=>({...d})),
-             names:SEED.names||{}};
+  let h = null;
+  if(raw){ try{ h = JSON.parse(raw); }catch(e){} }
+  // 用 SEED 做基线/升级：补全 caps 等缺失字段，合并 SEED 新增日期
+  const seedDays = (SEED.days||[]).map(d=>({...d}));
+  const seedNames = SEED.names||{};
+  if(!h || !h.days){
+    h = {updated:SEED.updated, days:seedDays, names:seedNames};
+    saveHistory(h); return h;
+  }
+  const dayMap = {};
+  h.days.forEach(d=>{ dayMap[d.date] = {...d}; });
+  seedDays.forEach(sd=>{
+    const existing = dayMap[sd.date] || {};
+    // 用 SEED 补全缺失字段（如 caps、metrics），保留本地已有数据
+    dayMap[sd.date] = {
+      date: sd.date,
+      k: existing.k || sd.k || [],
+      d: existing.d || sd.d || [],
+      metrics: existing.metrics && Object.keys(existing.metrics).length ? existing.metrics : (sd.metrics||{}),
+      caps: existing.caps && Object.keys(existing.caps).length ? existing.caps : (sd.caps||{})
+    };
+  });
+  h.days = Object.values(dayMap).sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));
+  h.updated = h.updated || SEED.updated;
+  h.names = {...seedNames, ...(h.names||{})};
   saveHistory(h); return h;
 }
 function saveHistory(h){ localStorage.setItem(LS_KEY, JSON.stringify(h)); }
@@ -144,7 +166,7 @@ function setStatus(s){ document.getElementById('status').textContent = s||''; }
 
 function findCol(headers, cands){
   const low = {}; headers.forEach((h,i)=>{ if(h) low[String(h).toLowerCase()]=i; });
-  for(const c of cands){ if(h in low) return low[h]; if(c.toLowerCase() in low) return low[c.toLowerCase()]; }
+  for(const c of cands){ const cl=c.toLowerCase(); if(cl in low) return low[cl]; }
   for(const c of cands){ const cl=c.toLowerCase(); if(!cl) continue;
     for(const h in low){ if(low.hasOwnProperty(h) && String(h).includes(cl)) return low[h]; } }
   return null;
