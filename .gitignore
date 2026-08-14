@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 _selftest.html
 .DS_Store
+incoming/
