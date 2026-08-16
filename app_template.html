@@ -261,7 +261,8 @@ function parseCap(v){
   const u=m[2];
   if(u==='亿') return n;
   if(u==='万') return n/1e4;
-  if(u==='千亿'||u==='万亿') return n*1000;
+  if(u==='千亿') return n*1000;
+  if(u==='万亿') return n*10000;
   return n/1e8;
 }
 function detectDate(...names){
