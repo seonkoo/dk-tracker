@@ -205,17 +205,19 @@
 <script>
 const SEED = window.SEED_DATA || {days:[],names:{},obs:null};
 const LS_KEY = 'dk_history_v1';
+const DATA_SCHEMA = 2;   // 解析规则升级时递增，旧数据自动丢弃
 let FILTER = 'all';
 
 function loadHistory(){
   const raw = localStorage.getItem(LS_KEY);
   let h = null;
   if(raw){ try{ h = JSON.parse(raw); }catch(e){} }
+  if(h && h.schema !== DATA_SCHEMA){ h = null; } // 旧schema/脏数据自动丢弃，回退到SEED
   // 用 SEED 做基线/升级：补全 caps 等缺失字段，合并 SEED 新增日期
   const seedDays = (SEED.days||[]).map(d=>({...d}));
   const seedNames = SEED.names||{};
   if(!h || !h.days){
-    h = {updated:SEED.updated, days:seedDays, names:seedNames};
+    h = {schema:DATA_SCHEMA, updated:SEED.updated, days:seedDays, names:seedNames};
     saveHistory(h); return h;
   }
   const dayMap = {};
@@ -236,7 +238,7 @@ function loadHistory(){
   h.names = {...seedNames, ...(h.names||{})};
   saveHistory(h); return h;
 }
-function saveHistory(h){ localStorage.setItem(LS_KEY, JSON.stringify(h)); }
+function saveHistory(h){ h.schema = DATA_SCHEMA; localStorage.setItem(LS_KEY, JSON.stringify(h)); }
 function setStatus(s){ document.getElementById('status').textContent = s||''; }
 
 function findCol(headers, cands){
