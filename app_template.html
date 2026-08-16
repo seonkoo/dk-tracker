@@ -40,6 +40,7 @@
   .bK{background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
   .bD{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d)}
   .bSame{background:var(--warn);color:#fff}
+  .bWarn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
   .arrow{color:var(--muted);font-weight:700}
   .upload{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px}
   .upload h2{font-size:15px;margin:0 0 10px}
@@ -419,6 +420,7 @@ function renderObs(){
 // ===== 回踩5日线监测（独立模块：实时拉行情，不影响主表/反转预警）=====
 const PB_WINDOW = 30;       // 仅监测近 N 天出现 D 点的个股
 const PB_VOL_MULT = 1.5;    // 放量破线阈值：当日量 > MA5量 × 1.5
+const PB_HIGH_GATE = 0.90;  // 危险信号仅当收盘价≥近20日高位的90%（高位才有效，降噪）
 function withinDays(dateStr, days){
   const d = new Date(String(dateStr).replace(/-/g,'/'));
   return (Date.now() - d.getTime()) <= days*86400000;
@@ -433,30 +435,46 @@ function marketPrefix(code){
 async function fetchKline(code){
   // 腾讯日K线：返回头含 Access-Control-Allow-Origin:*，浏览器可直接 fetch（无需 JSONP）
   const mkt = marketPrefix(code);
-  const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,20,qfq';
+  const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
   const r = await fetch(url, {headers:{'Referer':'https://gu.qq.com/'}});
   const d = await r.json();
   const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
   const arr = node.qfqday || node.day || [];
-  return arr.slice(-10);  // 最近 10 日，最新收盘在末位
+  return arr.slice(-20);  // 最近 20 日，足够算 MA5 与近20日高位（危险信号降噪用）
 }
 function avg(nums){ if(!nums.length) return 0; return nums.reduce((a,b)=>a+b,0)/nums.length; }
 function evalPullback(arr){
   // arr 行: [date, open, close, high, low, volume]，升序，最新在末位
   if(!arr || arr.length<6) return null;            // 需至少 6 日算前后两段 MA5
   const i = arr.length-1;
-  const price = +arr[i][2], low = +arr[i][4], vol = +arr[i][5];
+  const open = +arr[i][1], price = +arr[i][2], high = +arr[i][3], low = +arr[i][4], vol = +arr[i][5];
   const pPrice = +arr[i-1][2];                     // 昨日收盘
   const ma5  = avg(arr.slice(Math.max(0,i-4), i+1).map(r=>+r[2]));
   const ma5v = avg(arr.slice(Math.max(0,i-4), i+1).map(r=>+r[5]));
   const pMa5 = avg(arr.slice(Math.max(0,i-5), i).map(r=>+r[2]));   // 昨日 MA5（不含今日）
   if(ma5v===0) return null;
   const vol_ratio = vol/ma5v;
+  // 近20日高位（危险信号仅在高位有效，单独看噪音极大）
+  const high20 = Math.max(...arr.slice(-20).map(r=>+r[3]));
+  const nearHigh = price >= high20 * PB_HIGH_GATE;
+  const range = high - low;
+  const upperShadow = high - Math.max(open, price);     // 上影线长度
+  const body = Math.abs(price - open);
+  const bodyPct = open ? body/open : 0;                 // 实体占开盘价比例
+  const upperFrac = range>0 ? upperShadow/range : 0;    // 上影占整根K比例
+  const pctChg = pPrice ? (price-pPrice)/pPrice : 0;
+  const hasRange = range>0 && range/Math.max(open,1) > 0.01;  // 真有波动，非死直线
+  const danger = [];
+  if(nearHigh){
+    if(vol_ratio > PB_VOL_MULT && Math.abs(pctChg) < 0.01) danger.push('高位放量滞涨');
+    if(bodyPct < 0.003 && hasRange) danger.push('十字星');
+    if(upperFrac > 0.60 && hasRange) danger.push('上长影线');
+  }
   let kind='hold';
   // 买点(强过滤)：昨日收盘跌破 MA5 + 今日收盘重新站回 MA5 上方 + 今日最低触及 MA5
   if(pPrice < pMa5 && price >= ma5 && low <= ma5){ kind='buy'; }
   else if(price < ma5 && vol > ma5v*PB_VOL_MULT){ kind='sell'; }   // 卖点：放量破5日线
-  return {price, ma5, vol_ratio, kind};
+  return {price, ma5, vol_ratio, kind, danger, nearHigh};
 }
 async function renderPullback(){
   const box=document.getElementById('pullback');
@@ -472,24 +490,27 @@ async function renderPullback(){
   box.style.display='';
   sub.textContent='监测近 '+PB_WINDOW+' 天出现 D 点的 '+dStocks.length+' 只个股（实时行情，独立于其他模块；回踩买点已强过滤，信号稀有）';
   tb.innerHTML='<tr><td colspan="6" class="empty">正在拉取实时行情…</td></tr>';
-  let buy=0, sell=0;
+  let buy=0, sell=0, dangerN=0;
   const rows=await Promise.all(dStocks.map(async r=>{
     try{ const arr=await fetchKline(r.code); const ev=evalPullback(arr);
-      if(ev){ if(ev.kind==='buy')buy++; else if(ev.kind==='sell')sell++; }
+      if(ev){ if(ev.kind==='buy')buy++; else if(ev.kind==='sell')sell++;
+        else if(ev.danger && ev.danger.length) dangerN++; }
       return {r, ev, err:!ev};
     }catch(e){ return {r, ev:null, err:true}; }
   }));
-  cards.innerHTML=obsCard(buy,'回踩买点')+obsCard(sell,'放量破线卖');
+  cards.innerHTML=obsCard(buy,'回踩买点')+obsCard(sell,'放量破线卖')+obsCard(dangerN,'危险信号');
   tb.innerHTML=rows.map(({r,ev,err})=>{
     if(err) return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">行情获取失败</td></tr>';
     if(!ev) return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">数据不足</td></tr>';
+    const dangerTags = (ev.danger && ev.danger.length && ev.kind!=='sell')
+      ? ev.danger.map(t=>'<span class="badge bWarn">'+t+'</span>').join(' ') : '';
     const badge = ev.kind==='buy' ? '<span class="badge bD">回踩买点</span>'
                 : ev.kind==='sell' ? '<span class="badge bK">放量破线卖</span>'
-                : '<span class="badge">持有</span>';
+                : (dangerTags || '<span class="badge">持有</span>');
     return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+ev.price.toFixed(2)
       +'</td><td>'+ev.ma5.toFixed(2)+'</td><td>'+ev.vol_ratio.toFixed(2)+'</td><td>'+badge+'</td></tr>';
   }).join('');
-  note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'。绿色=关注买点，红色=风险卖点。仅供监测，非买卖建议。';
+  note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'（硬卖出信号）。🟡危险信号（仅近20日高位出现时提示，作减仓参考）：高位放量滞涨=放量大但价不涨；十字星=开盘≈收盘多空犹豫；上长影线=冲高被砸回。绿色=关注买点，红色=风险卖点，黄色=提高警惕。仅供监测，非买卖建议。';
 }
 
 function exportHistory(){ const h=loadHistory(); const blob=new Blob([JSON.stringify(h,null,2)],{type:'application/json'});
