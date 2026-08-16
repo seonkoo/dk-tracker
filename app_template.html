@@ -69,6 +69,14 @@
   .empty{color:var(--muted);padding:20px;text-align:center}
   a{color:var(--accent)}
   .note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
+  .hkadd{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 8px}
+  .hkadd input{flex:1;min-width:200px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);font-size:14px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--d) 20%,transparent);
+    color:var(--d);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}
+  .chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0;margin-left:2px}
+  .holdrow{background:color-mix(in srgb,var(--d) 12%,transparent)}
 </style>
 </head>
 <body>
@@ -136,6 +144,25 @@
     说明：首次出现 D 当天收盘为起点，统计其后 ≤30 自然日的累计涨幅，并与同期「中证全指」对比得超额。
     满 30 天自动从活跃名单流出。价格由桌面端（有网）同步，手机上传不更新此项。
   </div>
+</div>
+
+<div class="obs" id="holdbox" style="margin-top:22px">
+  <h2 style="font-size:16px;margin:0 0 4px">📌 我的持仓（重点监视）</h2>
+  <div class="sub">把你实际持有的代码填进去，它们会固定显示在本表并标 🟢 高亮，不再淹没在茫茫个股里。仅本机浏览器保存。</div>
+  <div class="hkadd">
+    <input id="hk_input" placeholder="输入代码，多个用空格/逗号分隔，如 600519 000001" onkeydown="if(event.key==='Enter')addHoldings()">
+    <button class="btn primary" onclick="addHoldings()">添加</button>
+    <button class="btn" onclick="clearHoldings()">清空</button>
+  </div>
+  <div id="hk_chips" class="chips"></div>
+  <div class="cards" id="hkcards" style="margin-bottom:12px"></div>
+  <table>
+    <thead><tr>
+      <th>代码</th><th>名称</th><th>最新价</th><th>5日线</th><th>量比</th><th>信号</th><th>危险信号</th>
+    </tr></thead>
+    <tbody id="hkbody"></tbody>
+  </table>
+  <div class="sub" id="hknote" style="margin-top:8px"></div>
 </div>
 
 <div class="obs" id="pullback" style="margin-top:22px;display:none">
@@ -476,9 +503,57 @@ function evalPullback(arr){
   else if(price < ma5 && vol > ma5v*PB_VOL_MULT){ kind='sell'; }   // 卖点：放量破5日线
   return {price, ma5, vol_ratio, kind, danger, nearHigh};
 }
+// ===== 我的持仓（本机保存，固定高亮，独立于 D 点监测）=====
+const HK_KEY = 'dk_holdings_v1';
+function loadHoldings(){ try{ const a=JSON.parse(localStorage.getItem(HK_KEY)); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveHoldings(a){ localStorage.setItem(HK_KEY, JSON.stringify(a)); }
+function addHoldings(){
+  const el=document.getElementById('hk_input'); const v=el.value.trim();
+  if(!v) return;
+  const codes=v.split(/[\s,，]+/).map(normCode).filter(c=>c);
+  const set=new Set(loadHoldings()); let added=0;
+  codes.forEach(c=>{ if(!set.has(c)){ set.add(c); added++; } });
+  const next=[...set]; saveHoldings(next); el.value='';
+  renderHoldingChips(); renderHoldings();
+  setStatus('已添加持仓 '+added+' 只，共 '+next.length+' 只');
+}
+function removeHolding(c){ saveHoldings(loadHoldings().filter(x=>x!==c)); renderHoldingChips(); renderHoldings(); }
+function clearHoldings(){ if(confirm('确定清空持仓列表？仅清掉本机标记，不影响其他数据。')){ saveHoldings([]); renderHoldingChips(); renderHoldings(); } }
+function renderHoldingChips(){
+  const box=document.getElementById('hk_chips'); const hs=loadHoldings();
+  box.innerHTML=hs.map(c=>'<span class="chip">'+c+' <button onclick="removeHolding(\''+c+'\')" title="移除">×</button></span>').join('');
+}
+async function renderHoldings(){
+  const box=document.getElementById('holdbox'); if(!box) return;
+  const tb=document.getElementById('hkbody'), cards=document.getElementById('hkcards'), note=document.getElementById('hknote');
+  const hs=loadHoldings();
+  if(!hs.length){ box.style.display=''; tb.innerHTML='<tr><td colspan="7" class="empty">还没有添加持仓，在上方输入框填入代码即可（多个用空格/逗号分隔）</td></tr>'; cards.innerHTML=''; note.textContent=''; return; }
+  box.style.display='';
+  const names=(loadHistory().names)||{};
+  tb.innerHTML='<tr><td colspan="7" class="empty">正在拉取实时行情…</td></tr>';
+  let buy=0,sell=0,dangerN=0;
+  const rows=await Promise.all(hs.map(async c=>{
+    try{ const arr=await fetchKline(c); const ev=evalPullback(arr);
+      if(ev){ if(ev.kind==='buy')buy++; else if(ev.kind==='sell')sell++; else if(ev.danger&&ev.danger.length)dangerN++; }
+      return {c, ev, err:!ev, name:names[c]||''};
+    }catch(e){ return {c, ev:null, err:true, name:names[c]||''}; }
+  }));
+  cards.innerHTML=obsCard(buy,'回踩买点')+obsCard(sell,'放量破线卖')+obsCard(dangerN,'危险信号');
+  tb.innerHTML=rows.map(({c,ev,err,name})=>{
+    if(err) return '<tr class="holdrow"><td>'+c+'</td><td>'+(name||'')+'</td><td colspan="5" class="empty">行情获取失败</td></tr>';
+    if(!ev) return '<tr class="holdrow"><td>'+c+'</td><td>'+(name||'')+'</td><td colspan="5" class="empty">数据不足</td></tr>';
+    const dangerTags=(ev.danger&&ev.danger.length&&ev.kind!=='sell')?ev.danger.map(t=>'<span class="badge bWarn">'+t+'</span>').join(' '):'';
+    const badge= ev.kind==='buy'?'<span class="badge bD">回踩买点</span>':ev.kind==='sell'?'<span class="badge bK">放量破线卖</span>':'<span class="badge">持有</span>';
+    return '<tr class="holdrow"><td>'+c+'</td><td>'+(name||'')+'</td><td>'+ev.price.toFixed(2)+'</td><td>'+ev.ma5.toFixed(2)
+      +'</td><td>'+ev.vol_ratio.toFixed(2)+'</td><td>'+badge+'</td><td>'+(dangerTags||'<span class="tl">—</span>')+'</td></tr>';
+  }).join('');
+  note.textContent='🟢 本表为你手动添加的持仓，固定显示并高亮，独立于 D 点监测；回踩监测表里你的持仓也会置顶+标🟢。信号含义同回踩监测模块。仅供监视，非买卖建议。';
+}
+
 async function renderPullback(){
   const box=document.getElementById('pullback');
   if(!box) return;
+  const hs = new Set(loadHoldings());
   const sub=document.getElementById('pullsub'), cards=document.getElementById('pullcards'),
         tb=document.getElementById('pullbody'), note=document.getElementById('pullnote');
   // D点股列表与反转预警同源：DATA.rows（用户上传后 analyze 得出）
@@ -498,16 +573,19 @@ async function renderPullback(){
       return {r, ev, err:!ev};
     }catch(e){ return {r, ev:null, err:true}; }
   }));
+  rows.sort((a,b)=>((hs.has(b.r.code)?1:0)-(hs.has(a.r.code)?1:0)));   // 持仓置顶
   cards.innerHTML=obsCard(buy,'回踩买点')+obsCard(sell,'放量破线卖')+obsCard(dangerN,'危险信号');
   tb.innerHTML=rows.map(({r,ev,err})=>{
-    if(err) return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">行情获取失败</td></tr>';
-    if(!ev) return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">数据不足</td></tr>';
+    const isHold = hs.has(r.code);
+    const hb = isHold ? '<span class="badge bD">🟢持仓</span> ' : '';
+    if(err) return '<tr class="'+(isHold?'holdrow':'')+'"><td>'+hb+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">行情获取失败</td></tr>';
+    if(!ev) return '<tr class="'+(isHold?'holdrow':'')+'"><td>'+hb+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td colspan="4" class="empty">数据不足</td></tr>';
     const dangerTags = (ev.danger && ev.danger.length && ev.kind!=='sell')
       ? ev.danger.map(t=>'<span class="badge bWarn">'+t+'</span>').join(' ') : '';
     const badge = ev.kind==='buy' ? '<span class="badge bD">回踩买点</span>'
                 : ev.kind==='sell' ? '<span class="badge bK">放量破线卖</span>'
                 : (dangerTags || '<span class="badge">持有</span>');
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+ev.price.toFixed(2)
+    return '<tr class="'+(isHold?'holdrow':'')+'"><td>'+hb+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+ev.price.toFixed(2)
       +'</td><td>'+ev.ma5.toFixed(2)+'</td><td>'+ev.vol_ratio.toFixed(2)+'</td><td>'+badge+'</td></tr>';
   }).join('');
   note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'（硬卖出信号）。🟡危险信号（仅近20日高位出现时提示，作减仓参考）：高位放量滞涨=放量大但价不涨；十字星=开盘≈收盘多空犹豫；上长影线=冲高被砸回。绿色=关注买点，红色=风险卖点，黄色=提高警惕。仅供监测，非买卖建议。';
@@ -521,7 +599,9 @@ function importHistory(e){ const f=e.target.files[0]; if(!f) return; const rd=ne
 function clearLocal(){ if(confirm('确定清空本机历史？会回到初始种子数据（可用导出备份）。')){ localStorage.removeItem(LS_KEY); render(); setStatus('已清空，恢复初始数据'); } }
 
 render();
+renderHoldingChips();
 setTimeout(renderPullback, 0);  // 页面加载即异步拉行情做回踩监测，不阻塞主表
+setTimeout(renderHoldings, 0); // 异步拉持仓实时行情，不阻塞主表
 </script>
 </body>
 </html>
