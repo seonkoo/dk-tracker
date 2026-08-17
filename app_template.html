@@ -538,14 +538,19 @@ function marketPrefix(code){
   return 'sh';
 }
 async function fetchKline(code){
-  // 腾讯日K线：返回头含 Access-Control-Allow-Origin:*，浏览器可直接 fetch（无需 JSONP）
-  const mkt = marketPrefix(code);
-  const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
-  const r = await fetch(url, {headers:{'Referer':'https://gu.qq.com/'}});
-  const d = await r.json();
-  const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
-  const arr = node.qfqday || node.day || [];
-  return arr.slice(-20);  // 最近 20 日，足够算 MA5 与近20日高位（危险信号降噪用）
+  // 优先使用服务端预烧录的 K 线（避免手机浏览器跨域/网络问题）
+  const cache = (window.SEED_DATA && window.SEED_DATA.klines) || {};
+  if(cache[code] && cache[code].length) return cache[code].slice(-20);
+  // 无缓存时再尝试实时拉取（持仓等用户自选股）
+  try{
+    const mkt = marketPrefix(code);
+    const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
+    const r = await fetch(url);
+    const d = await r.json();
+    const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
+    const arr = node.qfqday || node.day || [];
+    return arr.slice(-20);
+  }catch(e){ return null; }
 }
 function avg(nums){ if(!nums.length) return 0; return nums.reduce((a,b)=>a+b,0)/nums.length; }
 function evalPullback(arr){
@@ -641,8 +646,8 @@ async function renderPullback(){
   }catch(e){}
   if(!dStocks.length){ box.style.display='none'; return; }
   box.style.display='';
-  sub.textContent='监测近 '+PB_WINDOW+' 天出现 D 点的 '+dStocks.length+' 只个股（实时行情，独立于其他模块；回踩买点已强过滤，信号稀有）';
-  tb.innerHTML='<tr><td colspan="6" class="empty">正在拉取实时行情…</td></tr>';
+  sub.textContent='监测近 '+PB_WINDOW+' 天出现 D 点的 '+dStocks.length+' 只个股（K线由服务端预拉，独立于其他模块；回踩买点已强过滤，信号稀有）';
+  tb.innerHTML='<tr><td colspan="6" class="empty">正在计算信号…</td></tr>';
   let buy=0, sell=0, dangerN=0;
   const rows=await Promise.all(dStocks.map(async r=>{
     try{ const arr=await fetchKline(r.code); const ev=evalPullback(arr);
@@ -666,7 +671,7 @@ async function renderPullback(){
     return '<tr class="'+(isHold?'holdrow':'')+'"><td>'+hb+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+ev.price.toFixed(2)
       +'</td><td>'+ev.ma5.toFixed(2)+'</td><td>'+ev.vol_ratio.toFixed(2)+'</td><td>'+badge+'</td></tr>';
   }).join('');
-  note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'（硬卖出信号）。🟡危险信号（仅近20日高位出现时提示，作减仓参考）：高位放量滞涨=放量大但价不涨；十字星=开盘≈收盘多空犹豫；上长影线=冲高被砸回。绿色=关注买点，红色=风险卖点，黄色=提高警惕。仅供监测，非买卖建议。';
+  note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'（硬卖出信号）。🟡危险信号（仅近20日高位出现时提示，作减仓参考）：高位放量滞涨=放量大但价不涨；十字星=开盘≈收盘多空犹豫；上长影线=冲高被砸回。绿色=关注买点，红色=风险卖点，黄色=提高警惕。K线随每次上传预拉，持仓等自选仍尝试实时行情。仅供监测，非买卖建议。';
 }
 
 function switchTab(idx,el){

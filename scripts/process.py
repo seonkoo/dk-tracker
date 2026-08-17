@@ -335,14 +335,51 @@ def fetch_kline(code, beg, end, mkt=None):
         return None
 
 
-def _close_on_or_before(klines, date):
-    best = None
-    for k in klines:
-        if k["date"] <= date:
-            best = k
-        else:
-            break
-    return best
+def fetch_kline_full(code, days=30, mkt=None):
+    """拉腾讯前复权日K线，返回浏览器端 evalPullback 所需的 [date,open,close,high,low,vol] 数组列表。"""
+    if mkt is None:
+        mkt = market_prefix(code)
+    url = ("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+           "?param=%s%s,day,,,%d,qfq" % (mkt, code, days))
+    try:
+        req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            b = json.loads(r.read().decode("utf-8", "ignore"))
+        node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
+            or (b.get("data") or {}).get(code) or {}
+        arr = node.get("qfqday") or node.get("day") or []
+        # 腾讯顺序: date, open, close, high, low, volume; evalPullback 也按此顺序读取
+        return [[r[0], float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])] for r in arr] if arr else None
+    except Exception as e:
+        print("  [K线] 拉取失败 %s: %s" % (code, e))
+        return None
+
+
+def build_klines_for_pullback(records, days_window=30):
+    """为近 N 天出现过 D 点的个股预拉 K 线，避免手机浏览器跨域/网络问题。
+    返回 {code: [[date,open,close,high,low,vol], ...]}。"""
+    days = records.get("days", [])
+    if not days:
+        return {}
+    from datetime import date as _date
+    today = _date.fromisoformat(days[-1]["date"])
+    cutoff = (today - datetime.timedelta(days=days_window)).isoformat()
+    codes = set()
+    for day in days:
+        if day["date"] < cutoff:
+            continue
+        codes.update(day.get("d", []))
+    codes = sorted(codes)
+    print("  [回踩K线] 需预拉 %d 只近 %d 天 D 点股" % (len(codes), days_window))
+    out = {}
+    ok = 0
+    for code in codes:
+        arr = fetch_kline_full(code, days=days_window + 10)
+        if arr:
+            out[code] = arr
+            ok += 1
+    print("  [回踩K线] 命中 %d/%d" % (ok, len(codes)))
+    return out
 
 
 def median_py(arr):
@@ -351,6 +388,16 @@ def median_py(arr):
     a = sorted(arr)
     m = len(a) // 2
     return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
+
+
+def _close_on_or_before(klines, date):
+    best = None
+    for k in klines:
+        if k["date"] <= date:
+            best = k
+        else:
+            break
+    return best
 
 
 def _gtimg_secid(code):
@@ -745,7 +792,7 @@ def write_html(html):
 
 
 def generate_app(records, stocks, obs, config):
-    """生成手机端上传应用（含观察池）。
+    """生成手机端上传应用（含观察池、回踩K线预拉）。
     为彻底规避 GitHub 连接器对超长行/内容的截断与「手工转义引号」出错风险：
       - 种子数据 base64 切片为 seed_p1..N.js + seed_load.js
       - 整个 app HTML 也 base64 切片为 app_p1..M.js + app_load.js（app_load 用 document.write 注入）
@@ -763,14 +810,16 @@ def generate_app(records, stocks, obs, config):
                 f.write(line)
         return len(parts)
 
-    # 1) 种子数据切片
+    # 1) 种子数据切片（含预拉K线，供手机端无跨域使用）
     bluechips = sorted(set(load_json(BLUECHIPS_PATH, {}).keys()))
+    klines = build_klines_for_pullback(records, days_window=30)
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
         "names": stocks,
         "bluechips": bluechips,
         "obs": obs,
+        "klines": klines,
     }
     seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")
     n = chunk_write(seed_b64, "seed_p", "__SEED_B64")
