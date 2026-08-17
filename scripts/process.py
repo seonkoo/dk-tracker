@@ -32,6 +32,7 @@ RECORDS_PATH = os.path.join(BASE, "data", "records.json")
 STOCKS_PATH = os.path.join(BASE, "data", "stocks.json")
 HTML_PATH = os.path.join(BASE, "index.html")
 OBS_PATH = os.path.join(BASE, "data", "obs.json")
+BLUECHIPS_PATH = os.path.join(BASE, "data", "bluechips.json")
 APP_TEMPLATE_PATH = os.path.join(BASE, "app_template.html")
 OBS_WINDOW = 30            # 观察窗口（自然日）
 BENCH_SECID = "1.000985"   # 中证全指（前复权）
@@ -300,31 +301,37 @@ def build_analysis(records, stocks, config):
 
 
 # ---------- 观察池（首次D后30天涨跌幅，验证D参考性）----------
-def secid_of(code):
-    """沪市(6开头，含科创板688) -> 1.x；深市(0/3开头) -> 0.x。"""
-    return ("1." + code) if code.startswith("6") else ("0." + code)
+def market_prefix(code):
+    """北交所/新三板优先；沪市(6/9开头) -> sh；深市(0/3开头) -> sz。"""
+    c = str(code)
+    if c[:2] in ("92", "93") or c[0] in ("8", "4"):
+        return "bj"
+    if c[0] in ("6", "9"):
+        return "sh"
+    if c[0] in ("0", "3"):
+        return "sz"
+    return "sh"
 
 
-def fetch_kline(secid, beg, end):
-    """拉前复权日K线，返回 [{date, close}] 或 None（网络失败时）。"""
-    url = ("https://push2his.eastmoney.com/api/qt/stock/kline/get"
-           "?secid=%s&fields1=f1,f2,f3&fields2=f51,f53&klt=101&fqt=1&beg=%s&end=%s"
-           % (secid, beg, end))
+def fetch_kline(code, beg, end, mkt=None):
+    """拉腾讯前复权日K线，返回 [{date, close}] 或 None（网络失败时）。沙箱/桌面均可用。"""
+    if mkt is None:
+        mkt = market_prefix(code)
+    url = ("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+           "?param=%s%s,day,%s,%s,120,qfq" % (mkt, code, beg, end))
     try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"})
+        req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
         with urllib.request.urlopen(req, timeout=20) as r:
             b = json.loads(r.read().decode("utf-8", "ignore"))
-        data = b.get("data")
-        if not data or not data.get("klines"):
-            return None
+        node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
+            or (b.get("data") or {}).get(code) or {}
+        arr = node.get("qfqday") or node.get("day") or []
         out = []
-        for line in data["klines"]:
-            parts = line.split(",")
-            out.append({"date": parts[0], "close": float(parts[2])})
-        return out
+        for line in arr:
+            out.append({"date": line[0], "close": float(line[2])})
+        return out if out else None
     except Exception as e:
-        print("  [价格] 拉取失败 %s: %s" % (secid, e))
+        print("  [价格] 拉取失败 %s: %s" % (code, e))
         return None
 
 
@@ -338,32 +345,59 @@ def _close_on_or_before(klines, date):
     return best
 
 
+def median_py(arr):
+    if not arr:
+        return None
+    a = sorted(arr)
+    m = len(a) // 2
+    return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
+
+
 def build_obs(records, config):
-    """构建观察池：每只首次出现 D 的个股，计算其 D日收盘至今(<=30天)累计涨幅、同期基准涨幅、超额。"""
+    """构建观察池：每只首次出现 D 的个股，以其 D日收盘价为起点，
+    统计到「满30天 或 首次出现 K点」为止的累计涨幅，并对比基准（中证全指）。
+    蓝筹股额外标记。退出后冻结。"""
     days = records.get("days", [])
     if not days:
-        return {"updated": records.get("updated"), "benchmark": BENCH_NAME, "stocks": []}
+        return {"updated": records.get("updated"), "benchmark": BENCH_NAME,
+                "stocks": [], "summary": {}}
     today = datetime.date.today()
+    bluechips = set(load_json(BLUECHIPS_PATH, {}).keys())
+    # 每只股票的「首次 D 日」
     first_d = {}
     for day in days:
         for c in day.get("d", []):
             if c not in first_d:
                 first_d[c] = day["date"]
+    # 每只股票「首次 D 之后」第一次出现 K 的日期（用于退出判定）
+    first_k_after = {}
+    for c, dd in first_d.items():
+        for day in days:
+            if day["date"] > dd and c in day.get("k", []):
+                first_k_after[c] = day["date"]
+                break
     names = load_json(STOCKS_PATH, {})
     cache = {s["code"]: s for s in load_json(OBS_PATH, {}).get("stocks", [])}
     bench_cache = None
     result = []
     for code, entry_date in first_d.items():
         ed = datetime.date.fromisoformat(entry_date)
-        holding = (today - ed).days
-        exited = holding > OBS_WINDOW
+        # 退出日 = min(首次D+30天, 首次K日)
+        exit_date = ed + datetime.timedelta(days=OBS_WINDOW)
+        exit_reason = "满30天"
+        if code in first_k_after:
+            fk = datetime.date.fromisoformat(first_k_after[code])
+            if fk < exit_date:
+                exit_date = fk
+                exit_reason = "出现K点"
+        exited = today >= exit_date
+        stat_end = exit_date if exited else today
         cached = cache.get(code)
         if cached and cached.get("exited"):
             result.append(cached)  # 已流出则冻结，不再拉取
             continue
-        klines = fetch_kline(secid_of(code), entry_date, today.isoformat())
+        klines = fetch_kline(code, entry_date, stat_end.isoformat())
         if klines is None:
-            # 网络不可用：沿用缓存或占位，状态标「待同步」
             ec = cached.get("entry_close") if cached else None
             ret = cached.get("ret") if cached else None
             br = cached.get("bench_ret") if cached else None
@@ -371,16 +405,17 @@ def build_obs(records, config):
                 "code": code, "name": names.get(code, ""), "entry_date": entry_date,
                 "entry_close": ec, "ret": ret, "bench_ret": br,
                 "excess": (ret - br) if (ret is not None and br is not None) else None,
-                "holding_days": holding, "exited": exited,
+                "holding_days": (today - ed).days, "exited": exited,
+                "exit_reason": exit_reason,
                 "status": "待同步" if ret is None else ("已流出" if exited else "活跃"),
-                "updated": today.isoformat(),
+                "is_blue": code in bluechips, "updated": today.isoformat(),
             })
             continue
         ek = _close_on_or_before(klines, entry_date) or klines[0]
         entry_close = ek["close"]
         ret = klines[-1]["close"] / entry_close - 1
         if bench_cache is None:
-            bench_cache = fetch_kline(BENCH_SECID, entry_date, today.isoformat())
+            bench_cache = fetch_kline("000985", entry_date, stat_end.isoformat(), mkt="sh")
         bench_ret = None
         if bench_cache:
             b0 = _close_on_or_before(bench_cache, entry_date)
@@ -390,18 +425,47 @@ def build_obs(records, config):
             "code": code, "name": names.get(code, ""), "entry_date": entry_date,
             "entry_close": entry_close, "ret": ret, "bench_ret": bench_ret,
             "excess": (ret - bench_ret) if bench_ret is not None else None,
-            "holding_days": holding, "exited": exited,
+            "holding_days": (today - ed).days, "exited": exited,
+            "exit_reason": exit_reason,
             "status": "已流出" if exited else "活跃",
-            "updated": today.isoformat(),
+            "is_blue": code in bluechips, "updated": today.isoformat(),
         })
-    # 按累计涨幅降序（None 垫底）
-    result.sort(key=lambda x: (x["ret"] if x["ret"] is not None else -1e9), reverse=True)
+    # 排序：活跃在前，其次已流出，最后待同步；各组内按累计涨幅降序
+    order = {"活跃": 0, "已流出": 1, "待同步": 2}
+    result.sort(key=lambda x: (order.get(x["status"], 3),
+                               -(x["ret"] if x["ret"] is not None else -1e9)))
     obs = {"updated": today.isoformat(), "benchmark": BENCH_NAME, "stocks": result}
+    # 汇总统计
+    # 胜率分母：排除「待同步」，并排除「持有0天」（当天才出现D、尚无可评估收益）的同日项
+    valid = [x for x in result if x["ret"] is not None]
+    measurable = [x for x in valid if x["holding_days"] >= 1]
+    up = [x for x in measurable if x["ret"] > 0]
+    down = [x for x in measurable if x["ret"] < 0]
+    flat = [x for x in measurable if x["ret"] == 0]
+    rets = [x["ret"] for x in measurable]
+    obs["summary"] = {
+        "total_observed": len(result),
+        "valid": len(valid),
+        "measurable": len(measurable),
+        "up": len(up), "down": len(down), "flat": len(flat),
+        "win_rate": round(len(up) / len(measurable) * 100, 1) if measurable else None,
+        "pending": sum(1 for x in result if x["status"] == "待同步"),
+        "active": sum(1 for x in result if x["status"] == "活跃"),
+        "exited": sum(1 for x in result if x["exited"]),
+        "exited_30": sum(1 for x in result if x["exited"] and x["exit_reason"] == "满30天"),
+        "exited_k": sum(1 for x in result if x["exited"] and x["exit_reason"] == "出现K点"),
+        "avg_ret": round(sum(rets) / len(rets) * 100, 2) if rets else None,
+        "median_ret": round(median_py(rets) * 100, 2) if rets else None,
+        "blue": sum(1 for x in result if x["is_blue"]),
+        "blue_win": sum(1 for x in up if x["is_blue"]),
+    }
     save_json(OBS_PATH, obs)
-    print("  [观察池] 首次D=%d  活跃=%d  已流出=%d  待同步=%d" % (
-        len(result), sum(1 for x in result if not x["exited"] and x["status"] != "待同步"),
-        sum(1 for x in result if x["exited"]),
-        sum(1 for x in result if x["status"] == "待同步")))
+    print("  [观察池] 首次D=%d  活跃=%d  已流出=%d(满30天=%d,出K=%d)  待同步=%d"
+          % (len(result), obs["summary"]["active"], obs["summary"]["exited"],
+             obs["summary"]["exited_30"], obs["summary"]["exited_k"], obs["summary"]["pending"]))
+    print("  [汇总] 有效=%d  上涨=%d  下跌=%d  胜率=%s%%  中位涨幅=%s%%"
+          % (obs["summary"]["valid"], obs["summary"]["up"], obs["summary"]["down"],
+             obs["summary"]["win_rate"], obs["summary"]["median_ret"]))
     return obs
 
 
@@ -619,10 +683,12 @@ def generate_app(records, stocks, obs, config):
         return len(parts)
 
     # 1) 种子数据切片
+    bluechips = sorted(set(load_json(BLUECHIPS_PATH, {}).keys()))
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
         "names": stocks,
+        "bluechips": bluechips,
         "obs": obs,
     }
     seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")

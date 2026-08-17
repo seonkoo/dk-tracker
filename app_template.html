@@ -40,6 +40,11 @@
   .bK{background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
   .bD{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d)}
   .bSame{background:var(--warn);color:#fff}
+  .bBlue{background:#1d4ed8;color:#fff}
+  .bBlueAlert{background:#dc2626;color:#fff;box-shadow:0 0 0 2px #fca5a5}
+  tr.blueRow{background:color-mix(in srgb,#1d4ed8 7%,transparent)}
+  tr.blueAlert{background:#fef2f2 !important;box-shadow:inset 4px 0 0 #dc2626}
+  .warnbox .blueAlert2{background:#fef2f2;border-radius:8px;box-shadow:inset 3px 0 0 #dc2626;font-weight:700}
   .bWarn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
   .arrow{color:var(--muted);font-weight:700}
   .upload{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px}
@@ -146,7 +151,7 @@
 
 <div class="panel" id="panel1">
   <div class="obs" id="obsbox" style="margin-top:0;display:none">
-    <h2 style="font-size:16px;margin:0 0 4px">📊 D点观察池 · 首次D后30天涨跌幅</h2>
+    <h2 style="font-size:16px;margin:0 0 4px">📊 D点观察池 · 首次D起算，满30天或出K退出</h2>
     <div class="sub" id="obssub"></div>
     <div class="cards" id="obscards" style="margin-bottom:12px"></div>
     <table>
@@ -156,8 +161,10 @@
       <tbody id="obstbody"></tbody>
     </table>
     <div class="sub" style="margin-top:8px">
-      说明：首次出现 D 当天收盘为起点，统计其后 ≤30 自然日的累计涨幅，并与同期「中证全指」对比得超额。
-      满 30 天自动从活跃名单流出。价格由桌面端（有网）同步，手机上传不更新此项。
+      说明：以<b>首次出现 D 当天收盘价</b>为起点，统计其后累计涨幅，并与同期「中证全指」对比得超额。
+      <b>满 30 个自然日 或 首次出现 K点</b>即停止统计、移出观察池（状态标「已流出」并注明原因）。
+      顶部汇总卡片给出上涨/下跌家数与<b>胜率（D点收盘价买入后上涨占比，已排除待同步）</b>。
+      🔵 为蓝筹股；蓝筹股出现 D/K 在主表与反转预警中强提示（🚨）。
     </div>
   </div>
 </div>
@@ -227,7 +234,8 @@
 
 <!--SEED_SCRIPTS-->
 <script>
-const SEED = window.SEED_DATA || {days:[],names:{},obs:null};
+const SEED = window.SEED_DATA || {days:[],names:{},obs:null,bluechips:[]};
+const BLUE = new Set(SEED.bluechips||[]);   // 蓝筹股代码集合
 const LS_KEY = 'dk_history_v1';
 const DATA_SCHEMA = 2;   // 解析规则升级时递增，旧数据自动丢弃
 let FILTER = 'all';
@@ -435,8 +443,10 @@ function render(){
   const w=document.getElementById('warns');
   if(!warns.length){ w.innerHTML='<div class="empty">暂无反转记录</div>'; }
   else{ w.innerHTML=warns.map(r=>{ const lr=r.latest_reversal; const dir=(lr.from==='K'?'K→D':'D→K');
-    return '<div class="witem">'+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '+
-      '<b>'+esc(r.code)+'</b> '+esc(r.name)+' <span class="tl">'+lr.from_date+' → '+lr.to_date+'</span>'+
+    const blueTag = BLUE.has(r.code)? '<span class="badge bBlue">🔵蓝筹</span>' : '';
+    const blueCls = BLUE.has(r.code)? ' blueAlert2' : '';
+    return '<div class="witem'+blueCls+'">'+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '+
+      blueTag+'<b>'+esc(r.code)+'</b> '+esc(r.name)+' <span class="tl">'+lr.from_date+' → '+lr.to_date+'</span>'+
       '<span class="tl">（累计反转 '+r.n_reversals+' 次）</span></div>'; }).join(''); }
   const q=document.getElementById('q').value.trim().toLowerCase();
   const tb=document.getElementById('tbody');
@@ -449,9 +459,13 @@ function render(){
   });
   if(!rows.length){ tb.innerHTML='<tr><td colspan="12" class="empty">无匹配</td></tr>'; return; }
   tb.innerHTML=sortRows(rows).map(r=>{
-    const cur=r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
+    const blue = BLUE.has(r.code)? '<span class="badge bBlue">🔵</span>' : '';
+    const isBlue = BLUE.has(r.code);
+    const isBlueState = isBlue && (r.current==='K'||r.current==='D');
+    const cur = r.current==='K'?'<span class=sK>K</span>':(r.current==='D'?'<span class=sD>D</span>':'-');
+    const curBadge = isBlueState? '<span class="badge bBlueAlert">🚨 '+(r.current==='K'?'K':'D')+'</span>' : cur;
     const rev=r.latest_reversal?('<b style="color:var(--warn)">'+(r.latest_reversal.from==='K'?'K→D':'D→K')+'</b>'):'-';
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+fmtCap(r.cap)+'</td><td>'+cur+'</td><td>'+fmtMetric(r.metric)+'</td>'+
+    return '<tr class="'+(isBlueState?'blueAlert':'')+(isBlue&&!isBlueState?'blueRow':'')+'"><td>'+blue+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td>'+fmtCap(r.cap)+'</td><td>'+curBadge+'</td><td>'+fmtMetric(r.metric)+'</td>'+
       '<td class="tl">'+esc(r.first_date)+'</td><td class="tl">'+esc(r.last_date)+'</td>'+
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
@@ -469,24 +483,29 @@ function renderObs(){
   if(!obs || !obs.stocks || !obs.stocks.length){ box.style.display='none'; return; }
   box.style.display='';
   const st=obs.stocks;
-  const active=st.filter(x=>!x.exited && x.status!=='待同步');
-  const exited=st.filter(x=>x.exited);
-  const pending=st.filter(x=>x.status==='待同步');
-  document.getElementById('obssub').textContent='基准：'+(obs.benchmark||'—')+' ｜ 最后计算：'+(obs.updated||'—')+'（由桌面端同步，手机上传不更新此项）';
-  const rets=st.map(x=>x.ret).filter(x=>x!=null);
-  const brs=st.map(x=>x.bench_ret).filter(x=>x!=null);
-  const exc=st.map(x=>x.excess).filter(x=>x!=null);
-  const win=rets.filter(x=>x>0).length;
+  const s=obs.summary||{};
+  document.getElementById('obssub').textContent='基准：'+(obs.benchmark||'—')+' ｜ 最后计算：'+(obs.updated||'—')+'（价格由腾讯行情计算，D点收盘起算）';
   const cards=document.getElementById('obscards');
-  cards.innerHTML = obsCard(active.length, '活跃')+obsCard(exited.length, '已流出')+obsCard(pending.length, '待同步')+
-    obsCard(fmtPct(median(rets)).replace(/<[^>]+>/g,''), '池内中位涨幅')+
-    obsCard((rets.length?Math.round(win/rets.length*100):'-')+'%', '胜率(上涨占比)')+
-    obsCard(fmtPct(median(exc)).replace(/<[^>]+>/g,''), '超额中位');
+  cards.innerHTML =
+    obsCard(s.active||0, '活跃')+
+    obsCard(s.exited_30||0, '已流出·满30天')+
+    obsCard(s.exited_k||0, '已流出·出K')+
+    obsCard(s.pending||0, '待同步')+
+    obsCard(s.up||0, '上涨家数')+
+    obsCard(s.down||0, '下跌家数')+
+    obsCard((s.win_rate!=null?s.win_rate+'%':'-'), '胜率(上涨占比)')+
+    obsCard((s.median_ret!=null?s.median_ret+'%':'-'), '中位涨幅');
   const tb=document.getElementById('obstbody');
   tb.innerHTML=st.map(r=>{
-    const stt = r.exited? '<span class="badge bD">已流出</span>' : (r.status==='待同步'?'<span class="badge bSame">待同步</span>':'<span class="badge bK">活跃</span>');
-    return '<tr><td>'+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td class="tl">'+esc(r.entry_date)+'</td><td>'+r.holding_days+'</td>'+
-      '<td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td><td>'+fmtPct(r.excess)+'</td><td>'+stt+'</td></tr>';
+    const blue = r.is_blue? '<span class="badge bBlue">🔵蓝筹</span> ' : '';
+    let stt;
+    if(r.status==='待同步') stt='<span class="badge bSame">待同步</span>';
+    else if(r.exited) stt='<span class="badge bD">已流出·'+(r.exit_reason||'')+'</span>';
+    else stt='<span class="badge bK">活跃</span>';
+    return '<tr'+(r.is_blue?' class="blueRow"':'')+'>'+
+      '<td>'+blue+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td class="tl">'+esc(r.entry_date)+'</td>'+
+      '<td>'+r.holding_days+'</td><td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td>'+
+      '<td>'+fmtPct(r.excess)+'</td><td>'+stt+'</td></tr>';
   }).join('');
 }
 

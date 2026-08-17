@@ -36,9 +36,7 @@ else
   python3.11 scripts/process.py --k "$K" --d "$D"
 fi
 
-# ---- 4) 还原观察池缓存（桌面端专有；沙箱拉不到行情，避免把仓库里好值覆盖成「待同步」）----
-echo ">> 还原 data/obs.json（保留上次桌面端同步值）..."
-git checkout -- data/obs.json 2>/dev/null || true
+# ---- 4) 观察池：现由腾讯行情实时计算（沙箱/桌面均可），无需还原缓存 ----
 
 # ---- 5) JS 语法校验（解码模板内联脚本）----
 echo ">> 校验应用 JS 语法 ..."
