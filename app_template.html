@@ -92,6 +92,7 @@
   <button class="tab on" data-idx="0" onclick="switchTab(0,this)">📋 DK记录</button>
   <button class="tab" data-idx="1" onclick="switchTab(1,this)">📊 D点观察池</button>
   <button class="tab" data-idx="2" onclick="switchTab(2,this)">🎯 持仓·回踩</button>
+  <button class="tab" data-idx="3" onclick="switchTab(3,this)">☁ 云端同步</button>
 </div>
 
 <div class="panel on" id="panel0">
@@ -195,6 +196,29 @@
   </div>
 </div>
 
+<div class="panel" id="panel3">
+  <div class="obs" id="syncbox" style="margin-top:0">
+    <h2 style="font-size:16px;margin:0 0 4px">☁ 云端同步（GitHub）</h2>
+    <div class="sub">把数据存到仓库的 <code>data/records.json</code>，换手机 / 清缓存也不丢，且多设备共享。Token 仅存本机浏览器，不会上传到任何地方。</div>
+    <div class="hkadd">
+      <input id="sync_token" type="password" placeholder="GitHub Token（需该仓库写权限，如 ghp_…）" autocomplete="off">
+    </div>
+    <div class="hkadd">
+      <input id="sync_repo" placeholder="仓库 owner/repo" value="seonkoo/dk-tracker">
+      <input id="sync_branch" placeholder="分支" value="main" style="max-width:110px">
+    </div>
+    <div class="btnrow" style="margin-top:8px">
+      <button class="btn primary" onclick="saveToGitHub()">⬆️ 保存到 GitHub</button>
+      <button class="btn" onclick="pullFromGitHub()">⬇️ 拉取最新</button>
+      <button class="btn" onclick="exportHistory()">导出备份(JSON)</button>
+    </div>
+    <div class="status" id="sync_status"></div>
+    <div class="sub" style="margin-top:10px">
+      ⚠ 安全提示：Token 拥有该仓库写权限，请勿在公共 / 共享设备保存；建议用仅限本仓库的细粒度 Token，行程结束后可撤销轮换。D点观察池价格仍由桌面端同步，云端同步只更新 K/D 记录与名称。
+    </div>
+  </div>
+</div>
+
 <div class="note">
   说明：本页在<b>浏览器本地</b>保存全部历史（localStorage）。手机上传后数据留在这台手机的这个浏览器里；
   换设备/清缓存会丢，请用「导出历史」备份、或「导入历史」迁移。<br>
@@ -207,17 +231,19 @@ const SEED = window.SEED_DATA || {days:[],names:{},obs:null};
 const LS_KEY = 'dk_history_v1';
 const DATA_SCHEMA = 2;   // 解析规则升级时递增，旧数据自动丢弃
 let FILTER = 'all';
+let BASE = null;         // 运行时从仓库拉取的最新基线（优先于烧录 SEED）
 
 function loadHistory(){
   const raw = localStorage.getItem(LS_KEY);
   let h = null;
   if(raw){ try{ h = JSON.parse(raw); }catch(e){} }
   if(h && h.schema !== DATA_SCHEMA){ h = null; } // 旧schema/脏数据自动丢弃，回退到SEED
-  // 用 SEED 做基线/升级：补全 caps 等缺失字段，合并 SEED 新增日期
-  const seedDays = (SEED.days||[]).map(d=>({...d}));
-  const seedNames = SEED.names||{};
+  // 用基线（远程优先，否则烧录 SEED）做基线/升级：补全 caps 等缺失字段，合并新增日期
+  const base = BASE || SEED;
+  const seedDays = (base.days||[]).map(d=>({...d}));
+  const seedNames = base.names||{};
   if(!h || !h.days){
-    h = {schema:DATA_SCHEMA, updated:SEED.updated, days:seedDays, names:seedNames};
+    h = {schema:DATA_SCHEMA, updated:base.updated, days:seedDays, names:seedNames};
     saveHistory(h); return h;
   }
   const dayMap = {};
@@ -234,7 +260,7 @@ function loadHistory(){
     };
   });
   h.days = Object.values(dayMap).sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));
-  h.updated = h.updated || SEED.updated;
+  h.updated = h.updated || base.updated;
   h.names = {...seedNames, ...(h.names||{})};
   saveHistory(h); return h;
 }
@@ -634,9 +660,77 @@ function clearLocal(){ if(confirm('确定清空本机历史？会回到初始种
 
 render();
 renderHoldingChips();
+initRemote();                   // 页面加载即从仓库拉取最新 records.json / stocks.json 作为基线
 setTimeout(renderPullback, 0);  // 页面加载即异步拉行情做回踩监测，不阻塞主表
 setTimeout(renderHoldings, 0); // 异步拉持仓实时行情，不阻塞主表
 restoreTab();                    // 恢复上次停留的 tab
+
+// ===== 云端同步（GitHub Contents API）=====
+function setSync(s){ const el=document.getElementById('sync_status'); if(el) el.textContent=s||''; }
+async function initRemote(){
+  try{
+    const rec=await fetch('data/records.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+    if(rec && Array.isArray(rec.days)){
+      const st=await fetch('data/stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+      BASE={updated:rec.updated, days:rec.days, names:(st&&st.names)?st.names:(st||{}), obs:SEED.obs};
+      render();
+    }
+  }catch(e){ /* 离线则使用本地/初始数据 */ }
+}
+async function ghGetFile(tok,repo,branch,path){
+  const api='https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch;
+  const r=await fetch(api,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
+  if(!r.ok){ const t=await r.text(); throw new Error('读取 '+path+' 失败('+r.status+'): '+t.slice(0,160)); }
+  const j=await r.json();
+  const txt=decodeURIComponent(escape(atob(j.content.replace(/\s/g,''))));
+  return JSON.parse(txt);
+}
+async function ghPutFile(tok,repo,branch,path,content,msg){
+  const api='https://api.github.com/repos/'+repo+'/contents/'+path;
+  const head={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json','Content-Type':'application/json'};
+  let sha=null;
+  const g=await fetch(api+'?ref='+branch,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
+  if(g.ok){ const j=await g.json(); sha=j.sha; }
+  else if(g.status!==404){ const t=await g.text(); throw new Error('获取 '+path+' 版本失败('+g.status+'): '+t.slice(0,160)); }
+  const body={message:msg, content:btoa(unescape(encodeURIComponent(content))), branch:branch};
+  if(sha) body.sha=sha;
+  const r=await fetch(api,{method:'PUT',headers:head,body:JSON.stringify(body)});
+  if(!r.ok){ const t=await r.text(); throw new Error('写入 '+path+' 失败('+r.status+'): '+t.slice(0,200)); }
+}
+async function pullFromGitHub(){
+  const tok=document.getElementById('sync_token').value.trim();
+  const repo=document.getElementById('sync_repo').value.trim()||'seonkoo/dk-tracker';
+  const branch=document.getElementById('sync_branch').value.trim()||'main';
+  if(!tok){ alert('请先在上方填入 GitHub Token'); return; }
+  setSync('拉取中…');
+  try{
+    const rec=await ghGetFile(tok,repo,branch,'data/records.json');
+    const st=await ghGetFile(tok,repo,branch,'data/stocks.json');
+    const names=(st&&st.names)?st.names:(st||{});
+    BASE={updated:rec.updated, days:rec.days, names:names, obs:SEED.obs};
+    saveHistory({schema:DATA_SCHEMA, updated:rec.updated, days:rec.days, names:names});
+    setSync('✅ 已拉取最新（'+rec.days.length+' 天）');
+    render();
+  }catch(e){ setSync('拉取失败：'+e.message); }
+}
+async function saveToGitHub(){
+  const tok=document.getElementById('sync_token').value.trim();
+  const repo=document.getElementById('sync_repo').value.trim()||'seonkoo/dk-tracker';
+  const branch=document.getElementById('sync_branch').value.trim()||'main';
+  if(!tok){ alert('请先在上方填入 GitHub Token'); return; }
+  const h=loadHistory();
+  if(!h.days || !h.days.length){ alert('本地暂无数据'); return; }
+  const records={updated:h.updated, days:h.days};
+  const stocks=h.names||{};
+  setSync('保存中…');
+  try{
+    await ghPutFile(tok,repo,branch,'data/records.json', JSON.stringify(records,null,2), 'dk-tracker: 更新 records.json');
+    await ghPutFile(tok,repo,branch,'data/stocks.json', JSON.stringify(stocks,null,2), 'dk-tracker: 更新 stocks.json');
+    BASE={updated:records.updated, days:records.days, names:stocks, obs:SEED.obs};
+    setSync('✅ 已保存到 GitHub（'+repo+' @ '+branch+'），共 '+records.days.length+' 天');
+    render();
+  }catch(e){ setSync('保存失败：'+e.message); }
+}
 </script>
 </body>
 </html>
