@@ -443,9 +443,10 @@ function render(){
   const w=document.getElementById('warns');
   if(!warns.length){ w.innerHTML='<div class="empty">暂无反转记录</div>'; }
   else{ w.innerHTML=warns.map(r=>{ const lr=r.latest_reversal; const dir=(lr.from==='K'?'K→D':'D→K');
-    const blueTag = BLUE.has(r.code)? '<span class="badge bBlue">🔵蓝筹</span>' : '';
+    const blueTag = BLUE.has(r.code)? '<span class="badge bBlue">🔵蓝筹</span> ' : '';
+    const blueWarn = BLUE.has(r.code)? '🚨 ' : '';
     const blueCls = BLUE.has(r.code)? ' blueAlert2' : '';
-    return '<div class="witem'+blueCls+'">'+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '+
+    return '<div class="witem'+blueCls+'">'+blueWarn+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '+
       blueTag+'<b>'+esc(r.code)+'</b> '+esc(r.name)+' <span class="tl">'+lr.from_date+' → '+lr.to_date+'</span>'+
       '<span class="tl">（累计反转 '+r.n_reversals+' 次）</span></div>'; }).join(''); }
   const q=document.getElementById('q').value.trim().toLowerCase();
