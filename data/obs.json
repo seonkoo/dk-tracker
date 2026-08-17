@@ -15,7 +15,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 29.58,
+      "net_inflow": 0.0669424
     },
     {
       "code": "003031",
@@ -30,7 +32,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 645.41,
+      "net_inflow": 3.15160704
     },
     {
       "code": "688668",
@@ -45,7 +49,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 408.34,
+      "net_inflow": 2.07666196
     },
     {
       "code": "688381",
@@ -60,7 +66,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 90.21,
+      "net_inflow": 0.03376182
     },
     {
       "code": "688559",
@@ -75,7 +83,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 130.72,
+      "net_inflow": 0.77973035
     },
     {
       "code": "688379",
@@ -90,7 +100,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 55.33,
+      "net_inflow": 0.53256807
     },
     {
       "code": "301358",
@@ -105,7 +117,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 615.45,
+      "net_inflow": 1.24723476
     },
     {
       "code": "002700",
@@ -120,7 +134,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 26.47,
+      "net_inflow": 0.06404106
     },
     {
       "code": "688163",
@@ -135,7 +151,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 37.44,
+      "net_inflow": -0.00297663
     },
     {
       "code": "603303",
@@ -150,7 +168,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 113.08,
+      "net_inflow": 0.01414825
     },
     {
       "code": "301581",
@@ -165,7 +185,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.4,
+      "net_inflow": 0.0112177
     },
     {
       "code": "300397",
@@ -180,7 +202,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 62.53,
+      "net_inflow": 0.01202441
     },
     {
       "code": "002897",
@@ -195,7 +219,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 119.86,
+      "net_inflow": 0.01828467
     },
     {
       "code": "688275",
@@ -210,7 +236,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 108.46,
+      "net_inflow": 0.19554458
     },
     {
       "code": "688981",
@@ -225,7 +253,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": true,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 11708.1,
+      "net_inflow": 1.43692944
     },
     {
       "code": "002876",
@@ -240,7 +270,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 51.99,
+      "net_inflow": -0.02393968
     },
     {
       "code": "688052",
@@ -255,7 +287,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 398.95,
+      "net_inflow": -0.6380401
     },
     {
       "code": "688551",
@@ -270,7 +304,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 47.21,
+      "net_inflow": -0.01115745
     },
     {
       "code": "300953",
@@ -285,7 +321,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 263.48,
+      "net_inflow": -0.50213939
     },
     {
       "code": "300442",
@@ -300,7 +338,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1191.23,
+      "net_inflow": 1.8701632
     },
     {
       "code": "300447",
@@ -315,7 +355,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 44.19,
+      "net_inflow": 0.00816953
     },
     {
       "code": "300695",
@@ -330,7 +372,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 54.19,
+      "net_inflow": -0.00174031
     },
     {
       "code": "002254",
@@ -345,7 +389,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 110.61,
+      "net_inflow": 0.09552672
     },
     {
       "code": "002449",
@@ -360,7 +406,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 40.76,
+      "net_inflow": -0.01389786
     },
     {
       "code": "300057",
@@ -375,7 +423,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 67.14,
+      "net_inflow": 0.00630567
     },
     {
       "code": "300816",
@@ -390,7 +440,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 43.2,
+      "net_inflow": 0.00659367
     },
     {
       "code": "688237",
@@ -405,7 +457,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 54.8,
+      "net_inflow": 0.00226231
     },
     {
       "code": "301203",
@@ -420,7 +474,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 28.18,
+      "net_inflow": 0.01957725
     },
     {
       "code": "300252",
@@ -435,7 +491,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 83.47,
+      "net_inflow": 0.10594423
     },
     {
       "code": "300354",
@@ -450,7 +508,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 42.87,
+      "net_inflow": -0.06751773
     },
     {
       "code": "600558",
@@ -465,7 +525,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 45.33,
+      "net_inflow": 0.07430168
     },
     {
       "code": "603390",
@@ -480,7 +542,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 36.85,
+      "net_inflow": -0.02496815
     },
     {
       "code": "601088",
@@ -495,7 +559,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": true,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 9714.7,
+      "net_inflow": 0.76099238
     },
     {
       "code": "000620",
@@ -510,7 +576,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 182.03,
+      "net_inflow": -2.13324944
     },
     {
       "code": "002518",
@@ -525,7 +593,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 211.29,
+      "net_inflow": 0.1743002
     },
     {
       "code": "300031",
@@ -540,7 +610,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 93.55,
+      "net_inflow": -0.28339772
     },
     {
       "code": "300400",
@@ -555,7 +627,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 74.67,
+      "net_inflow": 0.07593291
     },
     {
       "code": "300554",
@@ -570,7 +644,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 24.89,
+      "net_inflow": 0.03209468
     },
     {
       "code": "300586",
@@ -585,7 +661,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 69.27,
+      "net_inflow": 0.01123627
     },
     {
       "code": "300609",
@@ -600,7 +678,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 32.66,
+      "net_inflow": -0.00394044
     },
     {
       "code": "603718",
@@ -615,7 +695,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 19.14,
+      "net_inflow": -0.00522886
     },
     {
       "code": "920026",
@@ -630,7 +712,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": null,
+      "net_inflow": null
     },
     {
       "code": "920083",
@@ -645,7 +729,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": null,
+      "net_inflow": null
     },
     {
       "code": "000019",
@@ -660,7 +746,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 72.96,
+      "net_inflow": 0.06955191
     },
     {
       "code": "000068",
@@ -675,7 +763,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.6,
+      "net_inflow": 0.07855414
     },
     {
       "code": "000833",
@@ -690,7 +780,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 170.68,
+      "net_inflow": 0.68515789
     },
     {
       "code": "000985",
@@ -705,7 +797,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 20.42,
+      "net_inflow": 0.01718205
     },
     {
       "code": "000998",
@@ -720,7 +814,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 123.14,
+      "net_inflow": 0.31759835
     },
     {
       "code": "001215",
@@ -735,7 +831,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 32.45,
+      "net_inflow": -0.02805784
     },
     {
       "code": "001226",
@@ -750,7 +848,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 33.55,
+      "net_inflow": 0.05053347
     },
     {
       "code": "001259",
@@ -765,7 +865,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 35.53,
+      "net_inflow": -0.01070593
     },
     {
       "code": "001389",
@@ -780,7 +882,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 813.44,
+      "net_inflow": -0.49597815
     },
     {
       "code": "001399",
@@ -795,7 +899,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1861.46,
+      "net_inflow": null
     },
     {
       "code": "002040",
@@ -810,7 +916,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 40.25,
+      "net_inflow": 0.00219078
     },
     {
       "code": "002129",
@@ -825,7 +933,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 389.35,
+      "net_inflow": 1.66329125
     },
     {
       "code": "002258",
@@ -840,7 +950,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 119.59,
+      "net_inflow": 1.59124827
     },
     {
       "code": "002273",
@@ -855,7 +967,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 404.67,
+      "net_inflow": 1.71847052
     },
     {
       "code": "002375",
@@ -870,7 +984,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 49.18,
+      "net_inflow": 0.02813183
     },
     {
       "code": "002436",
@@ -885,7 +1001,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 650.97,
+      "net_inflow": 9.08116816
     },
     {
       "code": "002475",
@@ -900,7 +1018,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": true,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 4552.93,
+      "net_inflow": 12.24100272
     },
     {
       "code": "002476",
@@ -915,7 +1035,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.72,
+      "net_inflow": 0.29752137
     },
     {
       "code": "002515",
@@ -930,7 +1052,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 95.88,
+      "net_inflow": 0.48109749
     },
     {
       "code": "002527",
@@ -945,7 +1069,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 78.57,
+      "net_inflow": 0.00437448
     },
     {
       "code": "002529",
@@ -960,7 +1086,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 18.69,
+      "net_inflow": -0.00859933
     },
     {
       "code": "002652",
@@ -975,7 +1103,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 21.1,
+      "net_inflow": 0.01213553
     },
     {
       "code": "002668",
@@ -990,7 +1120,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 117.3,
+      "net_inflow": 1.01355045
     },
     {
       "code": "002760",
@@ -1005,7 +1137,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 19.38,
+      "net_inflow": 0.0275186
     },
     {
       "code": "002838",
@@ -1020,7 +1154,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 130.08,
+      "net_inflow": 0.81097077
     },
     {
       "code": "003019",
@@ -1035,7 +1171,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 44.27,
+      "net_inflow": 0.05385065
     },
     {
       "code": "300128",
@@ -1050,7 +1188,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 61.84,
+      "net_inflow": -0.01823212
     },
     {
       "code": "300167",
@@ -1065,7 +1205,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 19.07,
+      "net_inflow": -0.00512771
     },
     {
       "code": "300196",
@@ -1080,7 +1222,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 78.29,
+      "net_inflow": 0.35660282
     },
     {
       "code": "300239",
@@ -1095,7 +1239,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.45,
+      "net_inflow": 0.00438422
     },
     {
       "code": "300241",
@@ -1110,7 +1256,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 41.92,
+      "net_inflow": 0.10341144
     },
     {
       "code": "300260",
@@ -1125,7 +1273,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 258.79,
+      "net_inflow": 0.13491317
     },
     {
       "code": "300308",
@@ -1140,7 +1290,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 11709.39,
+      "net_inflow": 20.87449344
     },
     {
       "code": "300320",
@@ -1155,7 +1307,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 54.41,
+      "net_inflow": 0.10522787
     },
     {
       "code": "300331",
@@ -1170,7 +1324,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 136.63,
+      "net_inflow": 0.57730347
     },
     {
       "code": "300416",
@@ -1185,7 +1341,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 80.3,
+      "net_inflow": 0.23930825
     },
     {
       "code": "300458",
@@ -1200,7 +1358,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 355.72,
+      "net_inflow": 1.83733771
     },
     {
       "code": "300481",
@@ -1215,7 +1375,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 44.48,
+      "net_inflow": -0.21963584
     },
     {
       "code": "300504",
@@ -1230,7 +1392,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 42.28,
+      "net_inflow": 0.03011516
     },
     {
       "code": "300545",
@@ -1245,7 +1409,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 55.66,
+      "net_inflow": 0.11674081
     },
     {
       "code": "300576",
@@ -1260,7 +1426,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 133.74,
+      "net_inflow": 0.03006432
     },
     {
       "code": "300596",
@@ -1275,7 +1443,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 100.09,
+      "net_inflow": 0.28171359
     },
     {
       "code": "300616",
@@ -1290,7 +1460,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 24.23,
+      "net_inflow": 0.0018157
     },
     {
       "code": "300656",
@@ -1305,7 +1477,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 49.99,
+      "net_inflow": 0.22719671
     },
     {
       "code": "300670",
@@ -1320,7 +1494,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 21.33,
+      "net_inflow": 0.00318606
     },
     {
       "code": "300679",
@@ -1335,7 +1511,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 217.38,
+      "net_inflow": 1.19031824
     },
     {
       "code": "300680",
@@ -1350,7 +1528,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 65.91,
+      "net_inflow": -0.02158468
     },
     {
       "code": "300706",
@@ -1365,7 +1545,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 88.08,
+      "net_inflow": 0.47390204
     },
     {
       "code": "300747",
@@ -1380,7 +1562,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 211.5,
+      "net_inflow": 0.15810387
     },
     {
       "code": "300751",
@@ -1395,7 +1579,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 521.71,
+      "net_inflow": 1.05353573
     },
     {
       "code": "300767",
@@ -1410,7 +1596,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 58.19,
+      "net_inflow": 0.19359772
     },
     {
       "code": "300769",
@@ -1425,7 +1613,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 137.82,
+      "net_inflow": 0.74797254
     },
     {
       "code": "300786",
@@ -1440,7 +1630,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.51,
+      "net_inflow": 0.00016664
     },
     {
       "code": "300812",
@@ -1455,7 +1647,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 39.4,
+      "net_inflow": -0.12529808
     },
     {
       "code": "300819",
@@ -1470,7 +1664,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 75.72,
+      "net_inflow": 0.2745857
     },
     {
       "code": "300855",
@@ -1485,7 +1681,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 130.76,
+      "net_inflow": -0.0457113
     },
     {
       "code": "300890",
@@ -1500,7 +1698,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 32.59,
+      "net_inflow": -0.02128654
     },
     {
       "code": "300938",
@@ -1515,7 +1715,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 103.38,
+      "net_inflow": -0.06312297
     },
     {
       "code": "300970",
@@ -1530,7 +1732,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 28.64,
+      "net_inflow": 0.04645461
     },
     {
       "code": "301002",
@@ -1545,7 +1749,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 41.65,
+      "net_inflow": 0.17623895
     },
     {
       "code": "301123",
@@ -1560,7 +1766,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 190.53,
+      "net_inflow": 0.53097239
     },
     {
       "code": "301161",
@@ -1575,7 +1783,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 35.59,
+      "net_inflow": -0.07278815
     },
     {
       "code": "301276",
@@ -1590,7 +1800,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 29.24,
+      "net_inflow": -0.02433633
     },
     {
       "code": "301280",
@@ -1605,7 +1817,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 82.88,
+      "net_inflow": -0.09730023
     },
     {
       "code": "301283",
@@ -1620,7 +1834,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.81,
+      "net_inflow": -0.00801847
     },
     {
       "code": "301285",
@@ -1635,7 +1851,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 181.85,
+      "net_inflow": 0.08909687
     },
     {
       "code": "301296",
@@ -1650,7 +1868,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 27.66,
+      "net_inflow": 0.0027866
     },
     {
       "code": "301310",
@@ -1665,7 +1885,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 107.57,
+      "net_inflow": -0.066367
     },
     {
       "code": "301386",
@@ -1680,7 +1902,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 29.29,
+      "net_inflow": -0.03776074
     },
     {
       "code": "301510",
@@ -1695,7 +1919,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 113.52,
+      "net_inflow": 0.10306676
     },
     {
       "code": "301630",
@@ -1710,7 +1936,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 103.24,
+      "net_inflow": 0.13716582
     },
     {
       "code": "600113",
@@ -1725,7 +1953,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 134.78,
+      "net_inflow": -0.06129121
     },
     {
       "code": "600148",
@@ -1740,7 +1970,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 22.01,
+      "net_inflow": 0.00107717
     },
     {
       "code": "600165",
@@ -1755,7 +1987,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 43.14,
+      "net_inflow": 0.01983543
     },
     {
       "code": "600522",
@@ -1770,7 +2004,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1225.25,
+      "net_inflow": -3.5828488
     },
     {
       "code": "600552",
@@ -1785,7 +2021,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 181.74,
+      "net_inflow": 1.30055168
     },
     {
       "code": "600869",
@@ -1800,7 +2038,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 381.06,
+      "net_inflow": 1.36063999
     },
     {
       "code": "601022",
@@ -1815,7 +2055,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 107.57,
+      "net_inflow": 0.19176724
     },
     {
       "code": "601058",
@@ -1830,7 +2072,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 459.35,
+      "net_inflow": 0.37018313
     },
     {
       "code": "601698",
@@ -1845,7 +2089,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1138.89,
+      "net_inflow": 0.43548622
     },
     {
       "code": "601939",
@@ -1860,7 +2106,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": true,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 26944.84,
+      "net_inflow": -0.41044962
     },
     {
       "code": "603006",
@@ -1875,7 +2123,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 28.98,
+      "net_inflow": -0.02878752
     },
     {
       "code": "603026",
@@ -1890,7 +2140,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 160.05,
+      "net_inflow": -0.13723725
     },
     {
       "code": "603050",
@@ -1905,7 +2157,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 75.78,
+      "net_inflow": 0.03358078
     },
     {
       "code": "603067",
@@ -1920,7 +2174,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 275.92,
+      "net_inflow": 1.55065592
     },
     {
       "code": "603090",
@@ -1935,7 +2191,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 40.75,
+      "net_inflow": -0.03784204
     },
     {
       "code": "603150",
@@ -1950,7 +2208,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 47.01,
+      "net_inflow": -0.00052913
     },
     {
       "code": "603155",
@@ -1965,7 +2225,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 66.3,
+      "net_inflow": -0.03787429
     },
     {
       "code": "603283",
@@ -1980,7 +2242,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 174.43,
+      "net_inflow": 0.56180966
     },
     {
       "code": "603286",
@@ -1995,7 +2259,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 54.45,
+      "net_inflow": 0.27338293
     },
     {
       "code": "603324",
@@ -2010,7 +2276,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 45.37,
+      "net_inflow": 0.0277275
     },
     {
       "code": "603389",
@@ -2025,7 +2293,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 126.75,
+      "net_inflow": 0.16510622
     },
     {
       "code": "603395",
@@ -2040,7 +2310,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 62.3,
+      "net_inflow": 0.41839971
     },
     {
       "code": "603650",
@@ -2055,7 +2327,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 417.7,
+      "net_inflow": 0.66669379
     },
     {
       "code": "603659",
@@ -2070,7 +2344,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 535.4,
+      "net_inflow": 0.51992059
     },
     {
       "code": "603662",
@@ -2085,7 +2361,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 153.87,
+      "net_inflow": -0.04813065
     },
     {
       "code": "603848",
@@ -2100,7 +2378,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 55.97,
+      "net_inflow": -0.01187574
     },
     {
       "code": "603861",
@@ -2115,7 +2395,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 69.08,
+      "net_inflow": -0.0192872
     },
     {
       "code": "603877",
@@ -2130,7 +2412,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 62.03,
+      "net_inflow": -0.02427946
     },
     {
       "code": "603895",
@@ -2145,7 +2429,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 27.42,
+      "net_inflow": 0.01848819
     },
     {
       "code": "605001",
@@ -2160,7 +2446,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 22.71,
+      "net_inflow": 0.00519204
     },
     {
       "code": "605277",
@@ -2175,7 +2463,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 60.42,
+      "net_inflow": -0.00497605
     },
     {
       "code": "605299",
@@ -2190,7 +2480,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 52.34,
+      "net_inflow": 0.00313228
     },
     {
       "code": "688001",
@@ -2205,7 +2497,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 264.45,
+      "net_inflow": 0.17546702
     },
     {
       "code": "688003",
@@ -2220,7 +2514,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 184.65,
+      "net_inflow": 0.96415109
     },
     {
       "code": "688035",
@@ -2235,7 +2531,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 106.89,
+      "net_inflow": 0.91867087
     },
     {
       "code": "688048",
@@ -2250,7 +2548,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 586.8,
+      "net_inflow": 0.74831536
     },
     {
       "code": "688083",
@@ -2265,7 +2565,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 93.1,
+      "net_inflow": 0.35078201
     },
     {
       "code": "688093",
@@ -2280,7 +2582,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 76.63,
+      "net_inflow": 0.06416936
     },
     {
       "code": "688097",
@@ -2295,7 +2599,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 220.87,
+      "net_inflow": 0.53364759
     },
     {
       "code": "688112",
@@ -2310,7 +2616,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 92.87,
+      "net_inflow": 0.22525081
     },
     {
       "code": "688135",
@@ -2325,7 +2633,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 63.59,
+      "net_inflow": -0.08764069
     },
     {
       "code": "688168",
@@ -2340,7 +2650,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 43.32,
+      "net_inflow": 0.02826736
     },
     {
       "code": "688210",
@@ -2355,7 +2667,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 53.42,
+      "net_inflow": 0.08886639
     },
     {
       "code": "688234",
@@ -2370,7 +2684,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 582.71,
+      "net_inflow": 1.6965195
     },
     {
       "code": "688262",
@@ -2385,7 +2701,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 98.41,
+      "net_inflow": 0.01268897
     },
     {
       "code": "688266",
@@ -2400,7 +2718,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 323.34,
+      "net_inflow": -0.25325272
     },
     {
       "code": "688279",
@@ -2415,7 +2735,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 205.64,
+      "net_inflow": 0.08848854
     },
     {
       "code": "688323",
@@ -2430,7 +2752,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 61.92,
+      "net_inflow": 0.21874825
     },
     {
       "code": "688325",
@@ -2445,7 +2769,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 98.49,
+      "net_inflow": -0.00884091
     },
     {
       "code": "688359",
@@ -2460,7 +2786,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 112.82,
+      "net_inflow": 0.99095355
     },
     {
       "code": "688361",
@@ -2475,7 +2803,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1298.01,
+      "net_inflow": -0.90013024
     },
     {
       "code": "688362",
@@ -2490,7 +2820,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 334.98,
+      "net_inflow": 1.25080592
     },
     {
       "code": "688377",
@@ -2505,7 +2837,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 49.19,
+      "net_inflow": -0.03717655
     },
     {
       "code": "688378",
@@ -2520,7 +2854,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 131.65,
+      "net_inflow": 0.29662082
     },
     {
       "code": "688383",
@@ -2535,7 +2871,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 130.35,
+      "net_inflow": 0.31973372
     },
     {
       "code": "688391",
@@ -2550,7 +2888,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 30.89,
+      "net_inflow": 0.0241332
     },
     {
       "code": "688521",
@@ -2565,7 +2905,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 1190.15,
+      "net_inflow": 2.59418624
     },
     {
       "code": "688531",
@@ -2580,7 +2922,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 243.52,
+      "net_inflow": 0.03586769
     },
     {
       "code": "688536",
@@ -2595,7 +2939,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 399.76,
+      "net_inflow": 1.46432193
     },
     {
       "code": "688610",
@@ -2610,7 +2956,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 119.95,
+      "net_inflow": 0.33798202
     },
     {
       "code": "688628",
@@ -2625,7 +2973,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 85.48,
+      "net_inflow": -0.01321765
     },
     {
       "code": "688636",
@@ -2640,7 +2990,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 36.94,
+      "net_inflow": -0.01311021
     },
     {
       "code": "688711",
@@ -2655,7 +3007,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 58.76,
+      "net_inflow": -0.00872084
     },
     {
       "code": "688720",
@@ -2670,7 +3024,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 89.15,
+      "net_inflow": 0.22141719
     },
     {
       "code": "688722",
@@ -2685,7 +3041,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 32.65,
+      "net_inflow": 0.02678337
     },
     {
       "code": "688729",
@@ -2700,7 +3058,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 809.82,
+      "net_inflow": 0.47454253
     },
     {
       "code": "688733",
@@ -2715,7 +3075,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 69.42,
+      "net_inflow": 0.27962469
     },
     {
       "code": "688737",
@@ -2730,7 +3092,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 22.19,
+      "net_inflow": 0.00433743
     },
     {
       "code": "688772",
@@ -2745,7 +3109,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 170.29,
+      "net_inflow": -0.2187735
     },
     {
       "code": "688786",
@@ -2760,7 +3126,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 51.53,
+      "net_inflow": 0.0397554
     },
     {
       "code": "920012",
@@ -2775,7 +3143,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": null,
+      "net_inflow": null
     },
     {
       "code": "920181",
@@ -2790,7 +3160,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": null,
+      "net_inflow": null
     },
     {
       "code": "920438",
@@ -2805,7 +3177,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": null,
+      "net_inflow": null
     },
     {
       "code": "688589",
@@ -2820,7 +3194,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 28.32,
+      "net_inflow": -0.00971115
     },
     {
       "code": "301489",
@@ -2835,7 +3211,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 139.09,
+      "net_inflow": -0.03472647
     },
     {
       "code": "603990",
@@ -2850,7 +3228,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 71.21,
+      "net_inflow": -0.04646354
     },
     {
       "code": "688511",
@@ -2865,7 +3245,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 31.03,
+      "net_inflow": -0.01157031
     },
     {
       "code": "688286",
@@ -2880,7 +3262,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 41.45,
+      "net_inflow": -0.20204638
     },
     {
       "code": "688029",
@@ -2895,7 +3279,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 137.45,
+      "net_inflow": 0.02085653
     },
     {
       "code": "603439",
@@ -2910,7 +3296,9 @@
       "exit_reason": "满30天",
       "status": "活跃",
       "is_blue": false,
-      "updated": "2026-08-17"
+      "updated": "2026-08-17",
+      "mktcap": 53.75,
+      "net_inflow": 0.26817696
     }
   ],
   "summary": {

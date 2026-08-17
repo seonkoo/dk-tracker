@@ -41,6 +41,9 @@
   .bD{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d)}
   .bSame{background:var(--warn);color:#fff}
   .bBlue{background:#1d4ed8;color:#fff}
+  .pos{color:var(--k)}       /* 净流入：红（A股习惯） */
+  .neg{color:var(--d)}       /* 净流出：绿 */
+  .neutral{color:var(--muted)}
   .bBlueAlert{background:#dc2626;color:#fff;box-shadow:0 0 0 2px #fca5a5}
   tr.blueRow{background:color-mix(in srgb,#1d4ed8 7%,transparent)}
   tr.blueAlert{background:#fef2f2 !important;box-shadow:inset 4px 0 0 #dc2626}
@@ -156,7 +159,7 @@
     <div class="cards" id="obscards" style="margin-bottom:12px"></div>
     <table>
       <thead><tr>
-        <th>代码</th><th>名称</th><th>首次D</th><th>持有天</th><th>累计涨幅%</th><th>基准%</th><th>超额%</th><th>状态</th>
+        <th>代码</th><th>名称</th><th>首次D</th><th>持有天</th><th>总市值</th><th>资金净流入</th><th>累计涨幅%</th><th>基准%</th><th>超额%</th><th>状态</th>
       </tr></thead>
       <tbody id="obstbody"></tbody>
     </table>
@@ -503,9 +506,17 @@ function renderObs(){
     if(r.status==='待同步') stt='<span class="badge bSame">待同步</span>';
     else if(r.exited) stt='<span class="badge bD">已流出·'+(r.exit_reason||'')+'</span>';
     else stt='<span class="badge bK">活跃</span>';
+    const mcap = (r.mktcap!=null)? (r.mktcap>=10000? (r.mktcap/10000).toFixed(2)+'万亿' : r.mktcap.toFixed(0)+'亿') : '—';
+    let inflow='—';
+    if(r.net_inflow!=null){
+      const v=r.net_inflow;
+      const txt=(v>=0?'+':'')+v.toFixed(2)+'亿';
+      inflow='<span class="'+(v>0?'pos':(v<0?'neg':'neutral'))+'">'+txt+'</span>';
+    }
     return '<tr'+(r.is_blue?' class="blueRow"':'')+'>'+
       '<td>'+blue+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td class="tl">'+esc(r.entry_date)+'</td>'+
-      '<td>'+r.holding_days+'</td><td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td>'+
+      '<td>'+r.holding_days+'</td><td>'+mcap+'</td><td>'+inflow+'</td>'+
+      '<td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td>'+
       '<td>'+fmtPct(r.excess)+'</td><td>'+stt+'</td></tr>';
   }).join('');
 }

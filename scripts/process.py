@@ -353,6 +353,75 @@ def median_py(arr):
     return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
 
 
+def _gtimg_secid(code):
+    """腾讯实时报价 secid 前缀：沪市 sh / 深市 sz / 北交 bj。"""
+    if code.startswith("6"):
+        return "sh" + code
+    if code.startswith(("8", "4")):
+        return "bj" + code
+    return "sz" + code
+
+
+def fetch_mktcap_map(codes):
+    """批量取总市值(亿元)。腾讯实时报价 [45]=总市值(亿)，一次可传多只。"""
+    out = {}
+    codes = [c for c in codes if c]
+    for i in range(0, len(codes), 50):
+        batch = codes[i:i + 50]
+        url = "https://qt.gtimg.cn/q=" + ",".join(_gtimg_secid(c) for c in batch)
+        try:
+            req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                txt = r.read().decode("gbk", "ignore")
+            for line in txt.split(";"):
+                if "=" not in line:
+                    continue
+                key = line.split("=")[0].strip().replace("v_", "")
+                seg = line.split('"', 1)
+                if len(seg) < 2:
+                    continue
+                part = seg[1].rsplit('"', 1)[0]
+                f = part.split("~")
+                code = key[2:] if key[:2] in ("sh", "sz", "bj") else key
+                if len(f) > 45 and f[45]:
+                    try:
+                        out[code] = float(f[45])
+                    except Exception:
+                        pass
+        except Exception as e:
+            print("  [市值] 批量拉取失败: %s" % e)
+    return out
+
+
+def fetch_inflow_map(codes):
+    """批量取主力净流入(元)。东方财富数据中心 PRIME_INFLOW（沙箱可达，该主机未被封）。
+    该接口仅支持单条件过滤，故单码逐查 + 并发（8 线程）。失败则该股为 None。"""
+    import concurrent.futures
+    import urllib.parse
+    def one(code):
+        flt = '(SECURITY_CODE="%s")' % code
+        url = ("https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_DMSK_TS_STOCKNEW"
+               "&columns=SECURITY_CODE,PRIME_INFLOW&pageSize=1&source=WEB&client=WEB&filter="
+               + urllib.parse.quote(flt))
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0", "Referer": "https://data.eastmoney.com/"})
+            with urllib.request.urlopen(req, timeout=12) as r:
+                d = json.loads(r.read().decode("utf-8", "ignore"))
+            rows = (d.get("result") or {}).get("data") or []
+            if rows:
+                return code, rows[0].get("PRIME_INFLOW")
+        except Exception:
+            pass
+        return code, None
+    out = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        for c, v in ex.map(one, codes):
+            out[c] = v
+    return out
+
+
+
 def build_obs(records, config):
     """构建观察池：每只首次出现 D 的个股，以其 D日收盘价为起点，
     统计到「满30天 或 首次出现 K点」为止的累计涨幅，并对比基准（中证全指）。
@@ -430,6 +499,18 @@ def build_obs(records, config):
             "status": "已流出" if exited else "活跃",
             "is_blue": code in bluechips, "updated": today.isoformat(),
         })
+    # 附加：总市值(亿) 与 资金净流入/主力净流入(亿元)
+    all_codes = [x["code"] for x in result]
+    mcap_map = fetch_mktcap_map(all_codes)
+    inflow_map = fetch_inflow_map(all_codes)
+    ok_mcap = sum(1 for v in mcap_map.values() if v is not None)
+    ok_inflow = sum(1 for v in inflow_map.values() if isinstance(v, (int, float)))
+    print("  [观察池] 总市值命中=%d/%d  资金净流入命中=%d/%d"
+          % (ok_mcap, len(all_codes), ok_inflow, len(all_codes)))
+    for x in result:
+        x["mktcap"] = mcap_map.get(x["code"])                       # 亿元
+        ni = inflow_map.get(x["code"])
+        x["net_inflow"] = (ni / 1e8) if isinstance(ni, (int, float)) else None  # 元→亿元
     # 排序：活跃在前，其次已流出，最后待同步；各组内按累计涨幅降序
     order = {"活跃": 0, "已流出": 1, "待同步": 2}
     result.sort(key=lambda x: (order.get(x["status"], 3),
