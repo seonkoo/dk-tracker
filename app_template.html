@@ -671,9 +671,12 @@ async function initRemote(){
   try{
     const rec=await fetch('data/records.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
     if(rec && Array.isArray(rec.days)){
-      const st=await fetch('data/stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
-      BASE={updated:rec.updated, days:rec.days, names:(st&&st.names)?st.names:(st||{}), obs:SEED.obs};
-      render();
+      // 仅当云端数据不比烧录基线更旧时才采用，避免 CDN 滞后时回退到旧数据
+      if(String(rec.updated||'') >= String(SEED.updated||'')){
+        const st=await fetch('data/stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+        BASE={updated:rec.updated, days:rec.days, names:(st&&st.names)?st.names:(st||{}), obs:SEED.obs};
+        render();
+      }
     }
   }catch(e){ /* 离线则使用本地/初始数据 */ }
 }
