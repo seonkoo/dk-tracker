@@ -510,7 +510,9 @@ def build_obs(records, config):
         stat_end = exit_date if exited else today
         cached = cache.get(code)
         if cached and cached.get("exited"):
-            result.append(cached)  # 已流出则冻结，不再拉取
+            c2 = dict(cached)
+            c2.setdefault("day_chg", None)
+            result.append(c2)  # 已流出则冻结，不再拉取
             continue
         klines = fetch_kline(code, entry_date, stat_end.isoformat())
         if klines is None:
@@ -520,6 +522,7 @@ def build_obs(records, config):
             result.append({
                 "code": code, "name": names.get(code, ""), "entry_date": entry_date,
                 "entry_close": ec, "ret": ret, "bench_ret": br,
+                "day_chg": cached.get("day_chg") if cached else None,
                 "excess": (ret - br) if (ret is not None and br is not None) else None,
                 "holding_days": (today - ed).days, "exited": exited,
                 "exit_reason": exit_reason,
@@ -530,6 +533,8 @@ def build_obs(records, config):
         ek = _close_on_or_before(klines, entry_date) or klines[0]
         entry_close = ek["close"]
         ret = klines[-1]["close"] / entry_close - 1
+        # 当日（最新交易日）涨跌幅：最后一根相对前一日的比例
+        day_chg = (klines[-1]["close"] / klines[-2]["close"] - 1) if len(klines) >= 2 else None
         if bench_cache is None:
             bench_cache = fetch_kline("000985", entry_date, stat_end.isoformat(), mkt="sh")
         bench_ret = None
@@ -540,6 +545,7 @@ def build_obs(records, config):
         result.append({
             "code": code, "name": names.get(code, ""), "entry_date": entry_date,
             "entry_close": entry_close, "ret": ret, "bench_ret": bench_ret,
+            "day_chg": day_chg,
             "excess": (ret - bench_ret) if bench_ret is not None else None,
             "holding_days": (today - ed).days, "exited": exited,
             "exit_reason": exit_reason,

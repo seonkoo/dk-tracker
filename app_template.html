@@ -181,6 +181,7 @@
           <th class="sortable" data-sort="holding_days" onclick="sortObs('holding_days')">持有天</th>
           <th class="sortable" data-sort="mktcap" onclick="sortObs('mktcap')">总市值</th>
           <th class="sortable" data-sort="net_inflow" onclick="sortObs('net_inflow')">资金净流入</th>
+          <th class="sortable" data-sort="day_chg" onclick="sortObs('day_chg')">当日涨幅%</th>
           <th class="sortable" data-sort="ret" onclick="sortObs('ret')">累计涨幅%</th>
           <th class="sortable" data-sort="bench_ret" onclick="sortObs('bench_ret')">基准%</th>
           <th class="sortable" data-sort="excess" onclick="sortObs('excess')">超额%</th>
@@ -192,6 +193,7 @@
     <div class="sub" style="margin-top:8px">
       说明：以<b>首次出现 D 当天收盘价</b>为起点，统计其后累计涨幅，并与同期「中证全指」对比得超额。
       <b>满 30 个自然日 或 首次出现 K点</b>即停止统计、移出观察池（状态标「已流出」并注明原因）。
+      「当日涨幅」为最新交易日（08-18）涨跌幅，行情接口收盘后稍晚更新。
       顶部汇总卡片给出上涨/下跌家数与<b>胜率（D点收盘价买入后上涨占比，已排除待同步）</b>。
       🔵 为蓝筹股；蓝筹股出现 D/K 在主表与反转预警中强提示（🚨）。
     </div>
@@ -568,6 +570,7 @@ function renderObs(){
     return '<tr'+(r.is_blue?' class="blueRow"':'')+'>'+
       '<td>'+blue+esc(r.code)+'</td><td>'+esc(r.name)+'</td><td class="tl">'+esc(r.entry_date)+'</td>'+
       '<td>'+r.holding_days+'</td><td>'+mcap+'</td><td>'+inflow+'</td>'+
+      '<td>'+fmtPct(r.day_chg)+'</td>'+
       '<td>'+fmtPct(r.ret)+'</td><td>'+fmtPct(r.bench_ret)+'</td>'+
       '<td>'+fmtPct(r.excess)+'</td><td>'+stt+'</td></tr>';
   }).join('');
