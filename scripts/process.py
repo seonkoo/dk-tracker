@@ -314,11 +314,16 @@ def market_prefix(code):
 
 
 def fetch_kline(code, beg, end, mkt=None):
-    """拉腾讯前复权日K线，返回 [{date, close}] 或 None（网络失败时）。沙箱/桌面均可用。"""
+    """拉腾讯前复权日K线，返回 [{date, close}] 或 None。
+    重要：腾讯 fqkline 接口在 beg 接近 end 时会漏掉最近一日；强制把 beg 拉远到 end-200 天
+    保证最新收盘日一定包含。早期多余数据由 _close_on_or_before 按 entry_date 过滤。"""
     if mkt is None:
         mkt = market_prefix(code)
+    from datetime import date as _date, timedelta
+    today = _date.fromisoformat(end)
+    beg_use = (today - timedelta(days=200)).isoformat()
     url = ("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
-           "?param=%s%s,day,%s,%s,120,qfq" % (mkt, code, beg, end))
+           "?param=%s%s,day,%s,%s,200,qfq" % (mkt, code, beg_use, end))
     try:
         req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
         with urllib.request.urlopen(req, timeout=20) as r:
