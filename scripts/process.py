@@ -387,6 +387,81 @@ def build_klines_for_pullback(records, days_window=30):
     return out
 
 
+# ---------------------------------------------------------------------------
+# earnings-radar（财报舆情雷达）数据接入 —— 提供「真实资金面」：
+#   行业/概念板块主力净流入、个股净流入/净流出 TOP、ETF 资金、外盘、财报舆情
+# 数据由 earnings-radar 服务端每日 08:30 / 22:00 推送至其 latest.json。
+# 这里在构建期拉取并烤入种子，作为资金流向 tab 的真实资金层（与 DK 信号面交叉验证）。
+# ---------------------------------------------------------------------------
+ER_SOURCES = [
+    "https://ghproxy.net/https://raw.githubusercontent.com/seonkoo/earnings-radar/main/latest.json",
+    "https://seonkoo.github.io/earnings-radar/latest.json",
+]
+
+
+def _er_sec(x):
+    """东财板块/个股一条记录 → 紧凑字典（net 单位换算为亿元）。"""
+    if not isinstance(x, dict):
+        return None
+    return {
+        "name": x.get("f14") or x.get("name"),
+        "code": x.get("f12") or x.get("code"),
+        "chg": x.get("f3") if x.get("f3") is not None else x.get("pct"),
+        "net": round((x.get("f62") or 0) / 1e8, 2),
+    }
+
+
+def _compact_er(d):
+    """把 earnings-radar 的 latest.json 压成资金流向 tab 需要的紧凑结构。"""
+    industry = [s for s in (_er_sec(x) for x in d.get("industry", [])) if s]
+    concept = [s for s in (_er_sec(x) for x in d.get("concept", [])) if s]
+    out = [s for s in (_er_sec(x) for x in d.get("out", [])) if s]
+    etf = d.get("etf", {}) or {}
+    return {
+        "available": True,
+        "updated": d.get("updated"),
+        "status": d.get("status"),
+        "industry_in": sorted(industry, key=lambda z: -z["net"])[:12],
+        "industry_out": sorted(out, key=lambda z: z["net"])[:12],
+        "concept_in": sorted(concept, key=lambda z: -z["net"])[:12],
+        "stocks_in": [_er_sec(x) for x in d.get("stocks", [])[:12] if _er_sec(x)],
+        "stocks_out": [_er_sec(x) for x in d.get("outStocks", [])[:8] if _er_sec(x)],
+        "etf": {
+            "byGroup": {k: round(v / 1e8, 2) for k, v in (etf.get("byGroup") or {}).items()},
+            "topIn": [{"name": x.get("name"), "code": x.get("code"),
+                       "pct": x.get("pct"), "net": round((x.get("f62") or 0) / 1e8, 2),
+                       "group": x.get("group")}
+                      for x in (etf.get("topIn") or [])[:8]],
+            "topOut": [{"name": x.get("name"), "code": x.get("code"),
+                        "pct": x.get("pct"), "net": round((x.get("f62") or 0) / 1e8, 2),
+                        "group": x.get("group")}
+                       for x in (etf.get("topOut") or [])[:8]],
+        },
+        "overseas": [{"name": x.get("name"), "pct": x.get("pct")}
+                     for x in d.get("overseas", [])],
+        "earnings": (d.get("earnings") or {}).get("overview") or {},
+    }
+
+
+def fetch_earnings_radar(timeout=20):
+    """拉取 earnings-radar 最新快照；失败返回 None（UI 降级为 unavailable）。"""
+    last_err = ""
+    for url in ER_SOURCES:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = json.loads(r.read().decode("utf-8", "ignore"))
+            comp = _compact_er(data)
+            print("  [earnings-radar] 已接入 更新于 %s (板块%d/概念%d/个股%d)"
+                  % (comp["updated"], len(comp["industry_in"]), len(comp["concept_in"]),
+                     len(comp["stocks_in"])))
+            return comp
+        except Exception as e:
+            last_err = "%s: %s" % (url, e)
+            print("  [earnings-radar] 拉取失败 %s" % last_err)
+    return None
+
+
 def median_py(arr):
     if not arr:
         return None
@@ -985,6 +1060,7 @@ def generate_app(records, stocks, obs, config):
     bluechips = sorted(set(load_json(BLUECHIPS_PATH, {}).keys()))
     klines = build_klines_for_pullback(records, days_window=30)
     flow = build_flow(records, stocks, config)
+    er = fetch_earnings_radar()
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
@@ -993,6 +1069,7 @@ def generate_app(records, stocks, obs, config):
         "obs": obs,
         "klines": klines,
         "flow": flow,
+        "er": er if er else {"available": False},
     }
     seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")
     n = chunk_write(seed_b64, "seed_p", "__SEED_B64")

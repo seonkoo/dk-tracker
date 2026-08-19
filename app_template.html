@@ -124,6 +124,24 @@
   .trajs .tK{color:var(--k)} .trajs .tD{color:var(--d)} .trajs .tN{color:var(--muted)}
   .flow-net{font-weight:700}
   .flow-net.in{color:var(--d)} .flow-net.out{color:var(--k)}
+  .flow-divider{margin:22px 0 4px;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:700;
+    background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){ .grid2{grid-template-columns:1fr} }
+  .crosscheck{margin:10px 0;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.6;
+    border:1px solid var(--line);background:var(--card);border-left:4px solid var(--accent)}
+  .crosscheck b{color:var(--accent)}
+  .crosscheck .ok{color:var(--d);font-weight:700}
+  .crosscheck .warn{color:var(--k);font-weight:700}
+  .ovs,.earn{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+  .ovs .ov{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .ovs .ov:last-child{border-bottom:none}
+  .earn .eh{font-weight:700;margin-bottom:6px;font-size:13px}
+  .earn .erow{display:flex;justify-content:space-between;padding:2px 0}
+  .earn .bar{height:6px;border-radius:3px;margin-top:4px;overflow:hidden;background:var(--line);display:flex}
+  .earn .bar .b{height:100%}
+  .earn .bar .bbull{background:var(--d)} .earn .bar .bear{background:var(--k)} .earn .bar .bneu{background:var(--muted)}
+  a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -323,6 +341,58 @@
     </div>
     <div class="sub" style="margin-top:8px">
       注：DK 信号由选股表每日状态推断，「轨迹」为各记录日状态（K=卖出信号 / D=买入信号 / −=无）。本模块结论为信号层面的资金方向推断，<b>非投资建议</b>。
+    </div>
+
+    <div class="flow-divider">📡 真实资金面 · earnings-radar 接入</div>
+    <div class="sub" id="flowerstatus" style="margin:-2px 0 8px"></div>
+
+    <div class="crosscheck" id="flowxcheck"></div>
+
+    <h3 class="flow-h">🏭 行业板块主力净流入 / 净流出</h3>
+    <div class="grid2">
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
+        <table><thead><tr><th>板块</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <tbody id="flower-ind-in"></tbody></table></div>
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP</div>
+        <table><thead><tr><th>板块</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <tbody id="flower-ind-out"></tbody></table></div>
+    </div>
+
+    <h3 class="flow-h">💡 概念板块主力净流入 TOP</h3>
+    <div class="table-wrap">
+      <table><thead><tr><th>概念</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+      <tbody id="flower-con-in"></tbody></table>
+    </div>
+
+    <h3 class="flow-h">🔥 个股主力净流入 / 净流出 TOP</h3>
+    <div class="grid2">
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP12</div>
+        <table><thead><tr><th>名称</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <tbody id="flower-stk-in"></tbody></table></div>
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP8</div>
+        <table><thead><tr><th>名称</th><th>涨%</th><th>净流出(亿)</th></tr></thead>
+        <tbody id="flower-stk-out"></tbody></table></div>
+    </div>
+
+    <h3 class="flow-h">📊 ETF 主力资金流向</h3>
+    <div class="cards" id="floweretf" style="margin-bottom:8px"></div>
+    <div class="grid2">
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
+        <table><thead><tr><th>ETF</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <tbody id="flower-etf-in"></tbody></table></div>
+      <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP</div>
+        <table><thead><tr><th>ETF</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <tbody id="flower-etf-out"></tbody></table></div>
+    </div>
+
+    <h3 class="flow-h">🌍 外盘风险 & 📋 财报舆情</h3>
+    <div class="grid2">
+      <div id="flower-ovs" class="ovs"></div>
+      <div id="flower-earn" class="earn"></div>
+    </div>
+    <div class="sub" style="margin-top:8px">
+      真实资金面来自 <a href="https://seonkoo.github.io/earnings-radar/" target="_blank" rel="noopener">earnings-radar</a>
+      服务端每日 08:30 / 22:00 推送的板块/个股/ETF 主力净流入数据，与上方「DK 信号面」交叉参考，可互相印证或发现背离。
     </div>
   </div>
 </div>
@@ -867,6 +937,132 @@ function renderFlow(){
         '<td class="trajs">'+traj+'</td><td>'+sig+'</td></tr>';
     }).join('');
   }
+  // ===== 真实资金面 · earnings-radar =====
+  const er = SEED.er || {};
+  const erBox = document.getElementById('flowerstatus');
+  if(!er.available){
+    erBox.innerHTML = '⚠️ 未接入 earnings-radar 数据（构建期拉取失败）。上方「DK 信号面」仍可用。';
+    ['flower-ind-in','flower-ind-out','flower-con-in','flower-stk-in','flower-stk-out',
+     'flower-etf-in','flower-etf-out','flower-ovs','flower-earn','floweretf','flowxcheck']
+     .forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; });
+    return;
+  }
+  // 数据更新时间 + 新鲜度
+  let fresh='', reFresh='';
+  try{
+    const u=new Date(er.updated); const h=(Date.now()-u.getTime())/36e5;
+    fresh = h<1?'（'+h.toFixed(0)+'小时内，较新）':(h<12?'（'+h.toFixed(0)+'小时前）':'（'+h.toFixed(0)+'小时前，建议发新表刷新）');
+  }catch(e){}
+  erBox.innerHTML = '数据更新于 <b>'+(er.updated||'—')+'</b> '+fresh+
+    ' ｜ 主力净流入由东财行情计算，单位「亿」。下方与上方 DK 信号面交叉参考。'+
+    '<span id="flowerrefresh" style="cursor:pointer;color:var(--accent);margin-left:8px" onclick="refreshER()">↻ 实时刷新</span>';
+  // 板块/个股 行渲染
+  const erSecRow = x => '<tr><td>'+esc(x.name||'—')+'</td><td>'+fmtMetric2(x.chg)+'</td>'+
+    '<td class="flow-net '+(x.net>0?'in':'out')+'">'+(x.net>0?'+':'')+x.net.toFixed(2)+'</td></tr>';
+  const fill = (id, arr, row) => { const e=document.getElementById(id);
+    e.innerHTML = (arr&&arr.length)? arr.map(row).join('') : '<tr><td colspan="3" class="empty">—</td></tr>'; };
+  fill('flower-ind-in', er.industry_in, erSecRow);
+  fill('flower-ind-out', er.industry_out, erSecRow);
+  fill('flower-con-in', er.concept_in, erSecRow);
+  fill('flower-stk-in', er.stocks_in, erSecRow);
+  fill('flower-stk-out', er.stocks_out, x => '<tr><td>'+esc(x.name||'—')+'</td><td>'+fmtMetric2(x.chg)+'</td>'+
+    '<td class="flow-net out">'+(x.net>0?'+':'')+x.net.toFixed(2)+'</td></tr>');
+  // ETF
+  const eg = er.etf.byGroup||{};
+  document.getElementById('floweretf').innerHTML = Object.keys(eg).map(k=>{
+    const v=eg[k]; const cls=v>=0?'in':'out';
+    return '<div class="card"><div class="n '+(v>=0?'sD':'sK')+'">'+(v>0?'+':'')+v.toFixed(1)+'亿</div><div class="l">'+esc(k)+'</div></div>';
+  }).join('');
+  const etfRow = x => '<tr><td>'+esc(x.name||'—')+'</td><td>'+fmtMetric2(x.pct)+'</td>'+
+    '<td class="flow-net '+(x.net>0?'in':'out')+'">'+(x.net>0?'+':'')+x.net.toFixed(2)+'</td></tr>';
+  fill('flower-etf-in', er.etf.topIn, etfRow);
+  fill('flower-etf-out', er.etf.topOut, etfRow);
+  // 外盘
+  document.getElementById('flower-ovs').innerHTML = '<div class="eh">🌍 外盘风险</div>'+
+    (er.overseas||[]).map(o=>'<div class="ov"><span>'+esc(o.name)+'</span>'+
+      '<span class="'+(o.pct>=0?'sK':'sD')+'">'+(o.pct>0?'+':'')+(o.pct||0)+'%</span></div>').join('') || '<div class="empty">—</div>';
+  // 财报舆情
+  const eo = er.earnings||{};
+  const tot = eo.total||0;
+  document.getElementById('flower-earn').innerHTML = '<div class="eh">📋 财报舆情冷暖</div>'+
+    (tot? ('<div class="erow"><span class="sD">利好 '+eo.bull+'</span><span class="sK">利空 '+eo.bear+'</span><span>中性 '+eo.neutral+'</span></div>'+
+      '<div class="bar"><div class="b bbull" style="width:'+(eo.bull/tot*100)+'%"></div>'+
+      '<div class="b bear" style="width:'+(eo.bear/tot*100)+'%"></div>'+
+      '<div class="b bneu" style="width:'+(eo.neutral/tot*100)+'%"></div></div>'+
+      '<div class="sub" style="margin-top:4px">利好/利空/中性 共 '+tot+' 条（标题关键词启发式）</div>')
+      : '<div class="empty">今日暂无财报公告</div>');
+  // 交叉验证：DK 信号面 vs 真实资金面
+  const xc = buildCrossCheck(F, er);
+  document.getElementById('flowxcheck').innerHTML = xc;
+}
+
+// DK 信号面（净信号=K−D，正=净流出）与 earnings-radar 真实资金（主力净流入，正=流入）交叉比对
+function buildCrossCheck(F, er){
+  const techRe = /半导体|芯片|AI|人工智能|通信|计算机|软件|算力|光模块|CPO|数据中心|消费电子|机器人|传媒|游戏|电子|数字经济|信创|VR|元宇宙|华为/;
+  const blueRe = /银行|保险|证券|白酒|食品饮料|石油|电力|煤炭|运营商|移动|电信|联通|家电|建筑|铁建|交建|中字头/;
+  const allSec = (er.industry_in||[]).concat(er.industry_out||[], er.concept_in||[]);
+  const sumNet = re => allSec.filter(s=>s.name&&re.test(s.name)).reduce((a,s)=>a+s.net,0);
+  const techNet = sumNet(techRe), blueNet = sumNet(blueRe);
+  // DK 风格净信号 → 流入极性（DK 净信号正=流出，取反=流入）
+  const styles = F.styles||{}; const order=F.style_order||[];
+  const dkInflow = s => { const v=styles[s]; return v? -v.latest.net : null; };
+  const verdict = (name, dk, real) => {
+    if(dk==null || real==null) return '';
+    if((dk>0 && real>0) || (dk<0 && real<0))
+      return '<div>• <b>'+name+'：</b>DK 信号与真实资金 <span class="ok">双向确认'+(dk>0?'流出':'流入')+'</span>（DK '+(dk>0?'+':'')+dk.toFixed(0)+'，主力 '+(real>0?'+':'')+real.toFixed(1)+'亿）</div>';
+    if((dk>0 && real<0) || (dk<0 && real>0))
+      return '<div>• <b>'+name+'：</b><span class="warn">⚠ 背离</span> — DK 指向'+(dk>0?'流出':'流入')+'，但真实主力'+(real>0?'净流入':'净流出')+'（DK '+(dk>0?'+':'')+dk.toFixed(0)+'，主力 '+(real>0?'+':'')+real.toFixed(1)+'亿），需警惕假突破/诱多</div>';
+    return '';
+  };
+  let html = '<b>🔍 交叉验证（DK 信号面 × 真实资金面）</b>';
+  html += verdict('科技成长', dkInflow('科技成长'), techNet);
+  html += verdict('蓝筹', dkInflow('蓝筹'), blueNet);
+  html += verdict('主板', dkInflow('主板'), sumNet(/./));  // 主板≈全市场净流向
+  // 个股层面：真实净流出 TOP 与 DK 信号呼应
+  const outTop = (er.stocks_out||[]).slice(0,3);
+  if(outTop.length) html += '<div>• 真实主力净流出最猛：'+outTop.map(s=>esc(s.name)+'('+s.net.toFixed(1)+'亿)').join('、')+' —— 与「科技/高位股退潮」信号呼应</div>';
+  if(!html.replace(/<b>.*<\/b>/,'').trim()) html += '<div>样本不足，暂无可比对项</div>';
+  return html;
+}
+
+// 把 earnings-radar 原始 latest.json 压成与构建期一致的结构（供运行时实时刷新）
+function compactER(d){
+  const sec = x => x ? {name:x.f14||x.name, code:x.f12||x.code,
+    chg:(x.f3!=null?x.f3:x.pct), net:Math.round((x.f62||0)/1e8*100)/100} : null;
+  const ind=(d.industry||[]).map(sec).filter(Boolean);
+  const out=(d.out||[]).map(sec).filter(Boolean);
+  const con=(d.concept||[]).map(sec).filter(Boolean);
+  const etf=d.etf||{};
+  const grp=etf.byGroup||{};
+  const etfG={}; for(const k in grp) etfG[k]=Math.round(grp[k]/1e8*100)/100;
+  return {
+    available:true, updated:d.updated, status:d.status,
+    industry_in:ind.slice().sort((a,b)=>b.net-a.net).slice(0,12),
+    industry_out:out.slice().sort((a,b)=>a.net-b.net).slice(0,12),
+    concept_in:con.slice().sort((a,b)=>b.net-a.net).slice(0,12),
+    stocks_in:(d.stocks||[]).slice(0,12).map(sec).filter(Boolean),
+    stocks_out:(d.outStocks||[]).slice(0,8).map(sec).filter(Boolean),
+    etf:{ byGroup:etfG,
+      topIn:(etf.topIn||[]).slice(0,8).map(x=>({name:x.name,code:x.code,pct:x.pct,net:Math.round((x.f62||0)/1e8*100)/100,group:x.group})),
+      topOut:(etf.topOut||[]).slice(0,8).map(x=>({name:x.name,code:x.code,pct:x.pct,net:Math.round((x.f62||0)/1e8*100)/100,group:x.group})) },
+    overseas:(d.overseas||[]).map(x=>({name:x.name,pct:x.pct})),
+    earnings:((d.earnings||{}).overview)||{},
+  };
+}
+
+// 运行时实时刷新 earnings-radar latest.json（ghproxy 支持跨域 CORS *），成功则重渲染
+function refreshER(){
+  const url='https://ghproxy.net/https://raw.githubusercontent.com/seonkoo/earnings-radar/main/latest.json';
+  const btn=document.getElementById('flowerrefresh'); if(btn) btn.textContent='刷新中…';
+  fetch(url).then(r=>r.json()).then(d=>{
+    if(!d || !d.industry){ throw new Error('空数据'); }
+    SEED.er = compactER(d);
+    renderFlow();
+    if(btn) btn.textContent='↻ 已刷新';
+  }).catch(e=>{
+    if(btn) btn.textContent='↻ 刷新失败';
+    console.warn('ER 实时刷新失败', e);
+  });
 }
 
 function switchTab(idx,el){
