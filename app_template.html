@@ -19,10 +19,15 @@
     }
   }
   *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   body{margin:0;background:var(--bg);color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-    line-height:1.5;padding:16px;max-width:960px;margin:0 auto}
-  @media(max-width:640px){body{padding:10px}}
+    line-height:1.5;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-width:960px;margin:0 auto}
+  a,button,input,select,th,label,td.sortable{-webkit-tap-highlight-color:transparent}
+  @media(max-width:640px){
+    body{padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+    h1{font-size:18px}
+  }
   h1{font-size:20px;margin:0 0 4px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
   .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
@@ -69,7 +74,7 @@
   .controls button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card)}
   th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card)}
+  th{color:var(--muted);font-weight:600;background:var(--card)}
   tr:last-child td{border-bottom:none}
   td.wrap{white-space:normal}
   .table-wrap{border:1px solid var(--line);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);margin-bottom:14px}
@@ -79,13 +84,21 @@
   th.sortable.sorted-asc::after{content:'▲';color:var(--accent)}
   th.sortable.sorted-desc::after{content:'▼';color:var(--accent)}
   .obs-table th,.obs-table td{min-width:80px}
-  .obs-table td:first-child{position:sticky;left:0;background:var(--card);z-index:2;box-shadow:1px 0 0 var(--line)}
-  .obs-table td:nth-child(2){position:sticky;left:70px;background:var(--card);z-index:2;box-shadow:1px 0 0 var(--line)}
+  /* 所有表首列固定：横向滑动时始终看清代码/名称首列 */
+  .table-wrap th:first-child,.table-wrap td:first-child{position:sticky;left:0;background:var(--card);z-index:2}
+  .obs-table th:first-child,.obs-table td:first-child{box-shadow:1px 0 0 var(--line)}
+  /* 观察池额外固定第二列（名称），与首列错开 */
+  .obs-table th:nth-child(2),.obs-table td:nth-child(2){position:sticky;left:70px;background:var(--card);z-index:2;box-shadow:1px 0 0 var(--line)}
   @media(max-width:640px){
     table{font-size:12px}
-    th,td{padding:6px 8px}
-    .obs-table td:first-child{width:60px;min-width:60px;left:0}
-    .obs-table td:nth-child(2){width:80px;min-width:80px;left:60px}
+    th,td{padding:7px 8px}
+    /* 长表在手机上内部滚动：表头纵向固定 + 首列横向固定 */
+    .table-wrap{max-height:68vh;overflow:auto;-webkit-overflow-scrolling:touch}
+    .table-wrap th{position:sticky;top:0;z-index:4;background:var(--card)}
+    .table-wrap th:first-child,.table-wrap th:nth-child(2){z-index:5}
+    .obs-table td:first-child{width:58px;min-width:58px;left:0}
+    .obs-table td:nth-child(2){width:78px;min-width:78px;left:58px}
+    .obs-table th:nth-child(2){left:58px}
   }
   .sK{color:var(--k);font-weight:700} .sD{color:var(--d);font-weight:700}
   .tl{color:var(--muted);font-size:12px}
@@ -100,9 +113,17 @@
     color:var(--d);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}
   .chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0;margin-left:2px}
   .holdrow{background:color-mix(in srgb,var(--d) 12%,transparent)}
-  .tabs{display:flex;gap:8px;border-bottom:2px solid var(--line);margin:18px 0;position:sticky;top:0;background:var(--bg);z-index:10;padding-top:4px}
-  .tab{flex:1;text-align:center;padding:10px 6px;font-size:14px;font-weight:600;color:var(--muted);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+  .tabs{display:flex;gap:6px;border-bottom:2px solid var(--line);margin:14px 0;position:sticky;top:0;background:var(--bg);z-index:10;padding-top:4px}
+  .tab{flex:1;text-align:center;padding:10px 6px;font-size:14px;font-weight:600;color:var(--muted);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;min-height:44px}
   .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  @media(max-width:640px){
+    .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;gap:4px;margin:10px 0;
+      min-width:0;  /* 防止被 max-content 子项撑开，避免页面横向滚动 */
+      -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%);
+      mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%)}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:0 0 auto;min-width:max-content;padding:10px 12px;font-size:13px}
+  }
   .panel{display:none}
   .panel.on{display:block}
   .flow-concl{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
@@ -146,6 +167,26 @@
   .ai-meta{color:var(--muted);font-weight:400;font-size:11px;margin-left:6px}
   .ai-text{white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--fg)}
   a{color:var(--accent)}
+  /* ===== 手机端增强（≤640px）===== */
+  @media(max-width:640px){
+    /* 加大可点区域，避免误触 */
+    .btn,.controls button,.filepick label{
+      min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+    .chips .chip{min-height:30px}
+    /* 输入框 16px 防止 iOS 聚焦自动放大；加高更易点 */
+    .controls input,.hkadd input,.filepick input,#syncbox input{
+      min-height:42px;font-size:16px}
+    select{padding:10px;border-radius:9px;border:1px solid var(--line);
+      background:var(--card);color:var(--fg);font-size:15px;min-height:42px}
+    .controls{gap:10px}
+    .controls input{flex:1 1 100%;min-width:0}
+    .cards{gap:8px}
+    .card{padding:10px}
+    .card .n{font-size:20px}
+    .upload,.warnbox{padding:12px}
+    .note{font-size:11.5px}
+    .flow-concl,.risk,.crosscheck,.ovs,.earn,.ai-card{padding:10px 11px}
+  }
 </style>
 </head>
 <body>
@@ -1114,6 +1155,14 @@ function switchTab(idx,el){
   document.getElementById('panel'+idx).classList.add('on');
   if(idx===4){ renderFlow(); refreshER(true); }
   try{ localStorage.setItem('dk_tab_idx', String(idx)); }catch(e){}
+  // 移动端 tab 横向滚动条：把当前 tab 居中，让"下划线"始终可见
+  try{
+    const bar = el && el.parentElement;
+    if(bar && bar.classList.contains('tabs') && bar.scrollWidth > bar.clientWidth){
+      const target = el.offsetLeft - (bar.clientWidth - el.offsetWidth)/2;
+      bar.scrollTo({left: Math.max(0, target), behavior:'instant'});
+    }
+  }catch(e){}
 }
 function restoreTab(){
   let idx=0; try{ idx=Math.max(0,Math.min(4,parseInt(localStorage.getItem('dk_tab_idx')||'0',10))); }catch(e){}
