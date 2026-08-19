@@ -33,6 +33,7 @@ STOCKS_PATH = os.path.join(BASE, "data", "stocks.json")
 HTML_PATH = os.path.join(BASE, "index.html")
 OBS_PATH = os.path.join(BASE, "data", "obs.json")
 BLUECHIPS_PATH = os.path.join(BASE, "data", "bluechips.json")
+INDUSTRY_PATH = os.path.join(BASE, "data", "industry_map.json")
 APP_TEMPLATE_PATH = os.path.join(BASE, "app_template.html")
 OBS_WINDOW = 30            # 观察窗口（自然日）
 BENCH_SECID = "1.000985"   # 中证全指（前复权）
@@ -888,6 +889,47 @@ def style_of(code, bluechips):
     return "主板"
 
 
+def _em_secid(code):
+    """东财 secid：沪市(6/9开头)=1.，其余=0.。"""
+    return ("1." if code.startswith(("6", "9")) else "0.") + code
+
+
+def _norm_industry(ind):
+    """行业名规范化：去掉申万罗马数字后缀（白酒Ⅱ→白酒）。"""
+    if not ind:
+        return None
+    return re.sub(r"[ⅠⅡⅢⅣⅤ]+$", "", str(ind)).strip()
+
+
+def fetch_industry_map(codes, cache_path=INDUSTRY_PATH):
+    """东财批量行业映射（f100），增量缓存到 data/industry_map.json。
+    数据源 push2delay.eastmoney.com（沙箱可达）；失败返回已有缓存。"""
+    cache = load_json(cache_path, {})
+    todo = [c for c in codes if c not in cache]
+    if todo:
+        for i in range(0, len(todo), 80):
+            batch = todo[i:i + 80]
+            secids = ",".join(_em_secid(c) for c in batch)
+            url = ("https://push2delay.eastmoney.com/api/qt/ulist.np/get"
+                   "?fltt=2&secids=%s&fields=f12,f14,f100" % secids)
+            try:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"})
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    b = json.loads(r.read().decode("utf-8", "ignore"))
+                got = 0
+                for x in (b.get("data") or {}).get("diff") or []:
+                    ind = x.get("f100")
+                    if ind:
+                        cache[str(x.get("f12"))] = ind
+                        got += 1
+                print("  [行业] 批次 %d-%d 命中 %d/%d" % (i, i + len(batch), got, len(batch)))
+            except Exception as e:
+                print("  [行业] 批量拉取失败: %s" % e)
+        save_json(cache_path, cache)
+    return cache
+
+
 STYLE_ORDER = ["蓝筹", "科技成长", "主板", "北交"]
 
 
@@ -942,6 +984,14 @@ def build_flow(records, stocks, config):
             st = "K" if c in kset else ("D" if c in dset else "-")
             blue_traj.setdefault(c, []).append({"date": date, "state": st})
 
+    # 行业映射（蓝筹 + 最新日 K/D 名单；东财 f100 增量缓存）
+    latest = days[-1]
+    latest_date = latest["date"]
+    kset_l = set(latest.get("k", []))
+    dset_l = set(latest.get("d", []))
+    metrics_l = latest.get("metrics", {})
+    ind_map = fetch_industry_map(set(bluechips) | kset_l | dset_l)
+
     # 蓝筹轨迹分析
     blue_list = []
     for c in sorted(bluechips):
@@ -951,16 +1001,13 @@ def build_flow(records, stocks, config):
         k2d = any(states[i - 1] == "K" and states[i] == "D" for i in range(1, len(states)))
         blue_list.append({
             "code": c, "name": names.get(c, c),
+            "industry": _norm_industry(ind_map.get(c)) or "未分类",
             "traj": traj, "current": current,
             "k2d": k2d, "risk_off": (current == "D"), "risk_on": (current == "K"),
         })
     blue_list.sort(key=lambda b: ({"D": 0, "K": 1, "-": 2}.get(b["current"], 3), b["code"]))
 
     # 风格最新日 + 较昨日
-    latest = days[-1]
-    latest_date = latest["date"]
-    kset_l = set(latest.get("k", []))
-    dset_l = set(latest.get("d", []))
     styles_out = {}
     for s in STYLE_ORDER:
         hist = style_hist[s]
@@ -980,6 +1027,34 @@ def build_flow(records, stocks, config):
         styles_out[s] = {"latest": last, "prev": prev,
                          "net_delta": net_delta, "chg_delta": chg_delta, "direction": direction}
     styles_ranked = sorted(styles_out.items(), key=lambda kv: kv[1]["latest"]["net"])  # 净流入(净最负)在前
+
+    # 行业维度：最新日 D/K 按行业汇总（蓝筹动向单列——银行蓝筹 vs 科技蓝筹含义不同）
+    ind_agg = {}
+    for c in kset_l | dset_l:
+        ind = _norm_industry(ind_map.get(c)) or "未分类"
+        agg = ind_agg.setdefault(ind, {"d": 0, "k": 0, "chgs": [], "blue_d": [], "blue_k": []})
+        m = metrics_l.get(c)
+        if isinstance(m, (int, float)):
+            agg["chgs"].append(m)
+        if c in dset_l:
+            agg["d"] += 1
+            if c in bluechips:
+                agg["blue_d"].append(names.get(c, c))
+        if c in kset_l:
+            agg["k"] += 1
+            if c in bluechips:
+                agg["blue_k"].append(names.get(c, c))
+    industries = []
+    for ind, agg in ind_agg.items():
+        chgs = agg["chgs"]
+        industries.append({
+            "industry": ind, "d": agg["d"], "k": agg["k"],
+            "net": agg["k"] - agg["d"],
+            "avg_chg": round(sum(chgs) / len(chgs), 2) if chgs else None,
+            "n": agg["d"] + agg["k"],
+            "blue_d": agg["blue_d"], "blue_k": agg["blue_k"],
+        })
+    industries.sort(key=lambda x: (-x["n"], x["net"]))  # 信号数量多者在前，其次按净信号
 
     # 风险/流向信号
     risk_signals = []
@@ -1032,9 +1107,113 @@ def build_flow(records, stocks, config):
         "styles": styles_out,
         "style_order": STYLE_ORDER,
         "bluechips": blue_list,
+        "industries": industries,
         "risk_signals": risk_signals,
         "conclusion": conclusion,
     }
+
+
+def _build_ai_prompt(flow, er):
+    """把 DK 信号面 + 真实资金面数据组织成给智谱的分析 prompt。"""
+    t = flow.get("timeline", [])
+    tl = "\n".join("  %s: D=%d K=%d 净信号%+d 当日均涨%s%%" % (
+        x["date"], x["d"], x["k"], x["net"], x.get("avg_chg")) for x in t[-3:])
+    st = flow.get("styles", {})
+    style_lines = []
+    for s, v in st.items():
+        L = v.get("latest") or {}
+        style_lines.append("  %s: D=%d K=%d 净%+d %s 当日均涨%s%%" % (
+            s, L.get("d", 0), L.get("k", 0), L.get("net", 0), v.get("direction", ""),
+            L.get("avg_chg")))
+    inds = (flow.get("industries") or [])[:12]
+    ind_lines = "\n".join("  %s: D=%d K=%d 净%+d 当日均涨%s%% 蓝筹D[%s] 蓝筹K[%s]" % (
+        x["industry"], x["d"], x["k"], x["net"], x.get("avg_chg"),
+        "、".join(x.get("blue_d") or []), "、".join(x.get("blue_k") or [])) for x in inds) \
+        if inds else "  （行业数据不足）"
+    blues = flow.get("bluechips", [])
+    blue_lines = "、".join("%s(%s·%s)" % (b["name"], b.get("industry", ""), b["current"])
+                           for b in blues if b.get("current") != "-") or "无"
+    er_lines = []
+    if er and er.get("available"):
+        er_lines = [
+            "行业主力净流入TOP: " + "、".join("%s%s亿" % (x["name"], x["net"]) for x in (er.get("industry_in") or [])[:5]),
+            "行业主力净流出TOP: " + "、".join("%s%s亿" % (x["name"], x["net"]) for x in (er.get("industry_out") or [])[:5]),
+            "个股净流入TOP: " + "、".join("%s%s亿" % (x["name"], x["net"]) for x in (er.get("stocks_in") or [])[:5]),
+            "个股净流出TOP: " + "、".join("%s%s亿" % (x["name"], x["net"]) for x in (er.get("stocks_out") or [])[:5]),
+            "ETF分组净流入(亿): " + str(er.get("etf", {}).get("byGroup", {})),
+            "财报舆情: " + str(er.get("earnings", {})),
+        ]
+    return """请基于以下数据输出一份A股资金流向与风格切换的市场解读（250-300字）。要求：
+1. 先给出今日资金方向总体判断（流入/流出/避险）；
+2. 指出风格与行业切换信号——哪些行业资金流入、哪些流出；特别区分蓝筹内部差异：银行等防御蓝筹出D点=避险，科技蓝筹出D点=进攻，含义不同；
+3. 点评蓝筹避险信号与关键风险；
+4. 若 DK 信号与真实主力资金方向矛盾，明确指出背离。
+语言流畅、口语化、像资深分析师给客户的盘中复盘，不要流水账列数据。
+
+【DK信号面·每日趋势】
+%s
+
+【风格强弱】
+%s
+
+【行业强弱（按DK信号）】
+%s
+
+【蓝筹动向】%s
+
+【真实资金面（earnings-radar）】
+%s""" % (tl, "\n".join(style_lines) or "  （数据不足）", ind_lines,
+            blue_lines, "\n".join(er_lines) if er_lines else "（数据缺失）")
+
+
+def fetch_ai_summary(flow, er, config, timeout=60):
+    """调用智谱 GLM 生成资金流向文字解读；未配置 key 或失败返回 None（前端隐藏）。
+    key 来源优先级：config.zhipu_api_key > 环境变量 ZHIPU_API_KEY > /root/.codebuddy/artifact/.zhipukey
+    （key 只存沙箱，绝不进仓库/前端）。"""
+    key = ""
+    for src in (config.get("zhipu_api_key") if isinstance(config, dict) else None,
+                os.environ.get("ZHIPU_API_KEY")):
+        if src:
+            key = str(src).strip()
+            break
+    if not key:
+        try:
+            p = "/root/.codebuddy/artifact/.zhipukey"
+            if os.path.exists(p):
+                key = open(p, encoding="utf-8").read().strip()
+        except Exception:
+            pass
+    if not key:
+        print("  [AI] 未配置智谱 key（config.zhipu_api_key / ZHIPU_API_KEY / .zhipukey），跳过文字解读")
+        return None
+    model = (config.get("zhipu_model") if isinstance(config, dict) else None) or "glm-4-flash"
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "你是资深A股策略分析师，擅长通过资金流向与DK信号解读市场风格切换、板块轮动与风险。输出简洁专业的中文分析，直接给结论。"},
+            {"role": "user", "content": _build_ai_prompt(flow, er)},
+        ],
+        "temperature": 0.6,
+        "max_tokens": 800,
+    }
+    req = urllib.request.Request(
+        "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            b = json.loads(r.read().decode("utf-8", "ignore"))
+        text = ((b.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        text = text.strip()
+        if not text:
+            print("  [AI] 智谱返回空内容")
+            return None
+        print("  [AI] 智谱 %s 解读已生成（%d 字）" % (model, len(text)))
+        return {"text": text, "model": model,
+                "ts": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
+    except Exception as e:
+        print("  [AI] 智谱调用失败: %s" % e)
+        return None
 
 
 def generate_app(records, stocks, obs, config):
@@ -1061,6 +1240,7 @@ def generate_app(records, stocks, obs, config):
     klines = build_klines_for_pullback(records, days_window=30)
     flow = build_flow(records, stocks, config)
     er = fetch_earnings_radar()
+    flow["ai_summary"] = fetch_ai_summary(flow, er, config)
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),

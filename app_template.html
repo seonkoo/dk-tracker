@@ -141,6 +141,10 @@
   .earn .bar{height:6px;border-radius:3px;margin-top:4px;overflow:hidden;background:var(--line);display:flex}
   .earn .bar .b{height:100%}
   .earn .bar .bbull{background:var(--d)} .earn .bar .bear{background:var(--k)} .earn .bar .bneu{background:var(--muted)}
+  .ai-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:10px 12px;margin:10px 0}
+  .ai-head{font-weight:700;font-size:14px;margin-bottom:6px}
+  .ai-meta{color:var(--muted);font-weight:400;font-size:11px;margin-left:6px}
+  .ai-text{white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--fg)}
   a{color:var(--accent)}
 </style>
 </head>
@@ -306,6 +310,7 @@
 
     <div class="flow-concl" id="flowconcl"></div>
     <div class="flow-risks" id="flowrisks"></div>
+    <div class="ai-card" id="flowai"></div>
 
     <h3 class="flow-h">📉 每日 DK 背离趋势</h3>
     <div class="sub" style="margin:-2px 0 8px">D=买入信号，K=卖出信号；净信号=K−D，正值代表卖出占优（净流出），负值代表买入占优（净流入）。</div>
@@ -329,12 +334,23 @@
       </table>
     </div>
 
+    <h3 class="flow-h">🏭 DK 行业强弱</h3>
+    <div class="sub" style="margin:-2px 0 8px">按当日 D/K 信号汇总到行业（净信号=K−D，正=流出）。蓝筹动向单列——<b>银行蓝筹出 D=避险、科技蓝筹出 D=进攻，含义不同</b>。</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>行业</th><th>D</th><th>K</th><th>净信号</th><th>当日均涨%</th><th>蓝筹动向</th>
+        </tr></thead>
+        <tbody id="flowindbody"></tbody>
+      </table>
+    </div>
+
     <h3 class="flow-h">🛡 蓝筹 DK 状态 · 避险信号</h3>
     <div class="sub" style="margin:-2px 0 8px">蓝筹（防御性权重股）出现 D 点 = 资金进场防御/避险信号；出现 K 点 = 防御股转弱。排序：D 点置顶。</div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>名称</th><th>代码</th><th>当前</th><th>近况轨迹</th><th>信号</th>
+          <th>名称</th><th>行业</th><th>当前</th><th>近况轨迹</th><th>信号</th>
         </tr></thead>
         <tbody id="flowbluebody"></tbody>
       </table>
@@ -918,6 +934,28 @@ function renderFlow(){
         '<td>'+L.up+' / '+L.down+'</td></tr>';
     }).join('');
   }
+  // 行业强弱（蓝筹按行业区分）
+  const ib=document.getElementById('flowindbody');
+  const inds = F.industries||[];
+  if(!inds.length){ ib.innerHTML='<tr><td colspan="6" class="empty">无行业数据</td></tr>'; }
+  else{
+    ib.innerHTML = inds.slice(0,15).map(x=>{
+      const netcls = x.net>0?'out':(x.net<0?'in':'');
+      const bd = x.blue_d||[], bk = x.blue_k||[];
+      let blueNote='—';
+      if(bd.length||bk.length){
+        blueNote = (bd.length? '<span class="sD">D:'+esc(bd.join('、'))+'</span>':'')+
+                   (bk.length? (bd.length?' ':'')+'<span class="sK">K:'+esc(bk.join('、'))+'</span>':'');
+      }
+      return '<tr><td>'+esc(x.industry)+'</td><td>'+x.d+'</td><td>'+x.k+'</td>'+
+        '<td class="flow-net '+netcls+'">'+(x.net>0?'+':'')+x.net+'</td>'+
+        '<td>'+fmtMetric2(x.avg_chg)+'</td><td class="tl">'+blueNote+'</td></tr>';
+    }).join('');
+  }
+  // AI 智能解读（智谱 GLM；未配置 key 时隐藏）
+  const ai=F.ai_summary;
+  const aiEl=document.getElementById('flowai');
+  if(aiEl) aiEl.innerHTML = ai ? '<div class="ai-head">🧠 AI 智能解读<span class="ai-meta">'+esc(ai.model||'')+' · '+esc(ai.ts||'')+'</span></div><div class="ai-text">'+esc(ai.text)+'</div>' : '';
   // 蓝筹 DK
   const bb=document.getElementById('flowbluebody');
   const blues = F.bluechips||[];
@@ -933,7 +971,7 @@ function renderFlow(){
       if(b.risk_off) sig='<span class="badge bD">🛡 避险</span>';
       else if(b.risk_on) sig='<span class="badge bK">撤退</span>';
       return '<tr'+(b.risk_off?' class="blueRow"':'')+'>'+
-        '<td>'+esc(b.name)+'</td><td>'+esc(b.code)+'</td><td>'+cur+'</td>'+
+        '<td>'+esc(b.name)+'</td><td>'+esc(b.industry||'—')+'</td><td>'+cur+'</td>'+
         '<td class="trajs">'+traj+'</td><td>'+sig+'</td></tr>';
     }).join('');
   }
