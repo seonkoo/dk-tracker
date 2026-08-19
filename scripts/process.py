@@ -802,6 +802,166 @@ def write_html(html):
     print("  [生成] %s (%d 字节)" % (HTML_PATH, len(html)))
 
 
+def style_of(code, bluechips):
+    """把代码归类到风格/板块：蓝筹 > 科技成长(科创/创业) > 北交 > 主板。"""
+    if code in bluechips:
+        return "蓝筹"
+    if code.startswith("688") or code.startswith("300") or code.startswith("301"):
+        return "科技成长"
+    if code.startswith("920"):
+        return "北交"
+    return "主板"
+
+
+STYLE_ORDER = ["蓝筹", "科技成长", "主板", "北交"]
+
+
+def build_flow(records, stocks, config):
+    """资金流向 / 风格切换分析：
+       - 每日 DK 背离趋势（D/K 净信号、当日均涨跌）
+       - 风格/板块强弱（蓝筹 / 科技成长 / 主板 / 北交）按净信号排序 + 较昨日变化
+       - 蓝筹 DK 轨迹与避险信号（当前 D 点 = 防御性买入信号）
+       - 规则驱动的资金流向结论
+    结论全由每日 DK 信号推断，仅供监测参考。"""
+    bluechips = set(load_json(BLUECHIPS_PATH, {}).keys())
+    days = records.get("days", [])
+    if not days:
+        return {"updated": records.get("updated"), "timeline": [], "styles": {},
+                "style_order": STYLE_ORDER, "bluechips": [], "risk_signals": [], "conclusion": ""}
+    names = stocks if isinstance(stocks, dict) else {}
+
+    timeline = []
+    style_hist = {s: [] for s in STYLE_ORDER}
+    blue_traj = {}
+
+    for d in days:
+        date = d["date"]
+        kset = set(d.get("k", []))
+        dset = set(d.get("d", []))
+        metrics = d.get("metrics", {})
+        flagged = kset | dset
+        allchg = [metrics.get(c) for c in flagged if isinstance(metrics.get(c), (int, float))]
+        timeline.append({
+            "date": date,
+            "k": len(kset), "d": len(dset),
+            "net": len(kset) - len(dset),                       # >0 卖出占优(净流出), <0 买入占优(净流入)
+            "ratio": round(len(dset) / len(kset), 2) if kset else None,
+            "avg_chg": round(sum(allchg) / len(allchg), 2) if allchg else None,
+            "up": sum(1 for x in allchg if x > 0),
+            "down": sum(1 for x in allchg if x < 0),
+        })
+        for s in STYLE_ORDER:
+            sk = [c for c in kset if style_of(c, bluechips) == s]
+            sd = [c for c in dset if style_of(c, bluechips) == s]
+            schg = [metrics.get(c) for c in (set(sk) | set(sd)) if isinstance(metrics.get(c), (int, float))]
+            style_hist[s].append({
+                "date": date,
+                "k": len(sk), "d": len(sd),
+                "net": len(sk) - len(sd),
+                "avg_chg": round(sum(schg) / len(schg), 2) if schg else None,
+                "up": sum(1 for x in schg if x > 0),
+                "down": sum(1 for x in schg if x < 0),
+                "n": len(sk) + len(sd),
+            })
+        for c in bluechips:
+            st = "K" if c in kset else ("D" if c in dset else "-")
+            blue_traj.setdefault(c, []).append({"date": date, "state": st})
+
+    # 蓝筹轨迹分析
+    blue_list = []
+    for c in sorted(bluechips):
+        traj = blue_traj.get(c, [])
+        states = [t["state"] for t in traj]
+        current = states[-1] if states else "-"
+        k2d = any(states[i - 1] == "K" and states[i] == "D" for i in range(1, len(states)))
+        blue_list.append({
+            "code": c, "name": names.get(c, c),
+            "traj": traj, "current": current,
+            "k2d": k2d, "risk_off": (current == "D"), "risk_on": (current == "K"),
+        })
+    blue_list.sort(key=lambda b: ({"D": 0, "K": 1, "-": 2}.get(b["current"], 3), b["code"]))
+
+    # 风格最新日 + 较昨日
+    latest = days[-1]
+    latest_date = latest["date"]
+    kset_l = set(latest.get("k", []))
+    dset_l = set(latest.get("d", []))
+    styles_out = {}
+    for s in STYLE_ORDER:
+        hist = style_hist[s]
+        if not hist:
+            continue
+        last = hist[-1]
+        prev = hist[-2] if len(hist) >= 2 else None
+        net_delta = (last["net"] - prev["net"]) if prev else None
+        chg_delta = ((last["avg_chg"] - prev["avg_chg"])
+                     if (prev and last["avg_chg"] is not None and prev["avg_chg"] is not None) else None)
+        if last["net"] > 0:
+            direction = "净流出"          # 卖出(K)信号多于买入(D)
+        elif last["net"] < 0:
+            direction = "净流入"          # 买入(D)信号多于卖出(K)
+        else:
+            direction = "均衡"
+        styles_out[s] = {"latest": last, "prev": prev,
+                         "net_delta": net_delta, "chg_delta": chg_delta, "direction": direction}
+    styles_ranked = sorted(styles_out.items(), key=lambda kv: kv[1]["latest"]["net"])  # 净流入(净最负)在前
+
+    # 风险/流向信号
+    risk_signals = []
+    blue_d = [b for b in blue_list if b["current"] == "D"]
+    blue_k = [b for b in blue_list if b["current"] == "K"]
+    if blue_d:
+        risk_signals.append({"type": "蓝筹避险", "level": "high",
+            "text": "%d 只蓝筹出现 D 点（%s）—— 资金转向防御/避险信号增强"
+                    % (len(blue_d), "、".join(b["name"] for b in blue_d))})
+    if blue_k:
+        risk_signals.append({"type": "蓝筹撤退", "level": "mid",
+            "text": "%d 只蓝筹出现 K 点（%s）" % (len(blue_k), "、".join(b["name"] for b in blue_k))})
+    if styles_ranked:
+        inflow_s, inflow_v = styles_ranked[0]
+        outflow_s, outflow_v = styles_ranked[-1]
+        if inflow_v["latest"]["net"] < 0:
+            risk_signals.append({"type": "资金流入", "level": "info",
+                "text": "资金净流入方向：%s（D-K=%d，当日均涨 %s%%）"
+                        % (inflow_s, -inflow_v["latest"]["net"], inflow_v["latest"]["avg_chg"])})
+        if outflow_v["latest"]["net"] > 0:
+            risk_signals.append({"type": "资金流出", "level": "warn",
+                "text": "资金净流出方向：%s（K-D=%d）" % (outflow_s, outflow_v["latest"]["net"])})
+
+    # 结论文本
+    t_last = timeline[-1]
+    concl = []
+    concl.append("截至 %s：全市场 D=%d / K=%d，净卖出信号 %d 只，市场整体%s。"
+                 % (latest_date, t_last["d"], t_last["k"], t_last["net"],
+                    "偏弱（卖出信号占优）" if t_last["net"] > 0
+                    else ("偏强（买入信号占优）" if t_last["net"] < 0 else "均衡")))
+    if styles_ranked:
+        inflow_s, inflow_v = styles_ranked[0]
+        outflow_s, outflow_v = styles_ranked[-1]
+        if inflow_v["latest"]["net"] < 0:
+            concl.append("资金净流入风格：%s（当日均涨 %s%%）。" % (inflow_s, inflow_v["latest"]["avg_chg"]))
+        if outflow_v["latest"]["net"] > 0:
+            concl.append("资金净流出风格：%s（当日均涨 %s%%）。" % (outflow_s, outflow_v["latest"]["avg_chg"]))
+    if blue_d or blue_k:
+        parts = []
+        if blue_d:
+            parts.append("%d 只蓝筹现 D 点（%s）" % (len(blue_d), "、".join(b["name"] for b in blue_d)))
+        if blue_k:
+            parts.append("%d 只蓝筹现 K 点（%s）" % (len(blue_k), "、".join(b["name"] for b in blue_k)))
+        concl.append("蓝筹动向：" + "；".join(parts) + "。蓝筹密集出现 D 点通常意味着资金转向防御/避险。")
+    conclusion = "".join(concl) + "（结论由每日 DK 信号推断，仅供参考，非投资建议。）"
+
+    return {
+        "updated": latest_date,
+        "timeline": timeline,
+        "styles": styles_out,
+        "style_order": STYLE_ORDER,
+        "bluechips": blue_list,
+        "risk_signals": risk_signals,
+        "conclusion": conclusion,
+    }
+
+
 def generate_app(records, stocks, obs, config):
     """生成手机端上传应用（含观察池、回踩K线预拉）。
     为彻底规避 GitHub 连接器对超长行/内容的截断与「手工转义引号」出错风险：
@@ -824,6 +984,7 @@ def generate_app(records, stocks, obs, config):
     # 1) 种子数据切片（含预拉K线，供手机端无跨域使用）
     bluechips = sorted(set(load_json(BLUECHIPS_PATH, {}).keys()))
     klines = build_klines_for_pullback(records, days_window=30)
+    flow = build_flow(records, stocks, config)
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
@@ -831,6 +992,7 @@ def generate_app(records, stocks, obs, config):
         "bluechips": bluechips,
         "obs": obs,
         "klines": klines,
+        "flow": flow,
     }
     seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")
     n = chunk_write(seed_b64, "seed_p", "__SEED_B64")
