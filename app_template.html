@@ -953,9 +953,10 @@ function renderFlow(){
     const u=new Date(er.updated); const h=(Date.now()-u.getTime())/36e5;
     fresh = h<1?'（'+h.toFixed(0)+'小时内，较新）':(h<12?'（'+h.toFixed(0)+'小时前）':'（'+h.toFixed(0)+'小时前，建议发新表刷新）');
   }catch(e){}
+  const autoNote = ER_REFRESH_AT ? ' ｜ 本页已于 '+ER_REFRESH_AT+' 自动刷新' : '';
   erBox.innerHTML = '数据更新于 <b>'+(er.updated||'—')+'</b> '+fresh+
-    ' ｜ 主力净流入由东财行情计算，单位「亿」。下方与上方 DK 信号面交叉参考。'+
-    '<span id="flowerrefresh" style="cursor:pointer;color:var(--accent);margin-left:8px" onclick="refreshER()">↻ 实时刷新</span>';
+    ' ｜ 主力净流入由东财行情计算，单位「亿」。盘中每 30 分钟自动刷新（覆盖 10:30 / 14:30 等关键时点）。'+autoNote+
+    '<span id="flowerrefresh" style="cursor:pointer;color:var(--accent);margin-left:8px" onclick="refreshER()">↻ 手动刷新</span>';
   // 板块/个股 行渲染
   const erSecRow = x => '<tr><td>'+esc(x.name||'—')+'</td><td>'+fmtMetric2(x.chg)+'</td>'+
     '<td class="flow-net '+(x.net>0?'in':'out')+'">'+(x.net>0?'+':'')+x.net.toFixed(2)+'</td></tr>';
@@ -1051,16 +1052,19 @@ function compactER(d){
 }
 
 // 运行时实时刷新 earnings-radar latest.json（ghproxy 支持跨域 CORS *），成功则重渲染
-function refreshER(){
+// silent=true 时为盘中自动轮询调用（不打扰按钮文案）
+let ER_REFRESH_AT='';
+function refreshER(silent){
   const url='https://ghproxy.net/https://raw.githubusercontent.com/seonkoo/earnings-radar/main/latest.json';
-  const btn=document.getElementById('flowerrefresh'); if(btn) btn.textContent='刷新中…';
+  const btn=document.getElementById('flowerrefresh'); if(btn && !silent) btn.textContent='刷新中…';
   fetch(url).then(r=>r.json()).then(d=>{
     if(!d || !d.industry){ throw new Error('空数据'); }
     SEED.er = compactER(d);
+    if(!silent) ER_REFRESH_AT = new Date().toTimeString().slice(0,5);
     renderFlow();
-    if(btn) btn.textContent='↻ 已刷新';
+    if(btn) btn.textContent = silent ? '↻ 自动' : '↻ 已刷新';
   }).catch(e=>{
-    if(btn) btn.textContent='↻ 刷新失败';
+    if(btn) btn.textContent='↻ 重试';
     console.warn('ER 实时刷新失败', e);
   });
 }
@@ -1070,7 +1074,7 @@ function switchTab(idx,el){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('panel'+idx).classList.add('on');
-  if(idx===4) renderFlow();
+  if(idx===4){ renderFlow(); refreshER(true); }
   try{ localStorage.setItem('dk_tab_idx', String(idx)); }catch(e){}
 }
 function restoreTab(){
@@ -1093,6 +1097,12 @@ initRemote();                   // 页面加载即从仓库拉取最新 records.
 setTimeout(renderPullback, 0);  // 页面加载即异步拉行情做回踩监测，不阻塞主表
 setTimeout(renderHoldings, 0); // 异步拉持仓实时行情，不阻塞主表
 restoreTab();                    // 恢复上次停留的 tab
+// 资金流向 tab 盘中自动刷新真实资金面：停留该 tab 时每 30 分钟拉一次 earnings-radar 最新数据
+// （覆盖 10:30 / 14:30 盘中关键时点；进入该 tab 时已在 switchTab 里先拉一次）
+setInterval(function(){
+  const p=document.getElementById('panel4');
+  if(p && p.classList.contains('on')) refreshER(true);
+}, 30*60*1000);
 
 // ===== 云端同步（GitHub Contents API）=====
 function setSync(s){ const el=document.getElementById('sync_status'); if(el) el.textContent=s||''; }
