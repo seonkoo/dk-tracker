@@ -1,0 +1,32 @@
+name: intraday-update
+# 交易日盘中自动更新 dk-tracker：
+#   10:30 / 14:30（北京时间，GitHub cron 用 UTC = 02:30 / 06:30）
+# 动作：重新生成站点（拉 earnings-radar 盘中数据 + 腾讯行情）并推送 GitHub Pages。
+# 前置：仓库 Settings → Secrets and variables → Actions 需配置 GH_TOKEN（PAT，权限 repo 或 Contents: Read and write）。
+# 注意：腾讯行情从 GitHub 美国节点拉取可能失败（K线盘中价不更新），但 earnings-radar 资金面
+#       走 GitHub Pages 直连可正常更新；资金流向 tab 另有页面端 30 分钟自动轮询兜底。
+on:
+  schedule:
+    - cron: '30 2 * * 1-5'   # 周一至周五 10:30 (CST)
+    - cron: '30 6 * * 1-5'   # 周一至周五 14:30 (CST)
+  workflow_dispatch:        # 支持手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+      - name: 配置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装依赖
+        run: pip install --quiet openpyxl
+      - name: 盘中更新（重新生成并推送）
+        run: bash scripts/intraday_update.sh
