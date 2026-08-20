@@ -139,6 +139,10 @@
   .risk.warn .rt{background:var(--k);color:#fff}
   .risk.info .rt{background:var(--accent);color:#fff}
   h3.flow-h{font-size:14px;margin:20px 0 0;color:var(--fg);font-weight:700}
+  .er-stamp{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;background:#f3f4f6;color:#6b7280}
+  .er-stamp.fresh{background:#ecfdf5;color:#047857}
+  .er-stamp.stale{background:#fef3c7;color:#92400e}
+  .er-stamp.vstale{background:#fee2e2;color:#b91c1c}
   .rot{font-weight:700}
   .rot.up{color:var(--d)} .rot.down{color:var(--k)}
   .trajs{font-size:12px;letter-spacing:1px;font-weight:700}
@@ -402,10 +406,11 @@
 
     <div class="flow-divider">📡 真实资金面 · earnings-radar 接入</div>
     <div class="sub" id="flowerstatus" style="margin:-2px 0 8px"></div>
+    <div id="flower-stale-warn" style="display:none;margin:-2px 0 10px;padding:8px 12px;border-radius:8px;background:#fff1f2;color:#9f1239;font-size:13px;font-weight:600;line-height:1.5"></div>
 
     <div class="crosscheck" id="flowxcheck"></div>
 
-    <h3 class="flow-h">🏭 行业板块主力净流入 / 净流出</h3>
+    <h3 class="flow-h">🏭 行业板块主力净流入 / 净流出 <span class="er-stamp" id="er-stamp-0"></span></h3>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
         <table><thead><tr><th>板块</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
@@ -415,13 +420,13 @@
         <tbody id="flower-ind-out"></tbody></table></div>
     </div>
 
-    <h3 class="flow-h">💡 概念板块主力净流入 TOP</h3>
+    <h3 class="flow-h">💡 概念板块主力净流入 TOP <span class="er-stamp" id="er-stamp-1"></span></h3>
     <div class="table-wrap">
       <table><thead><tr><th>概念</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
-      <tbody id="flower-con-in"></tbody></table>
+        <tbody id="flower-con-in"></tbody></table>
     </div>
 
-    <h3 class="flow-h">🔥 个股主力净流入 / 净流出 TOP</h3>
+    <h3 class="flow-h">🔥 个股主力净流入 / 净流出 TOP <span class="er-stamp" id="er-stamp-2"></span></h3>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP12</div>
         <table><thead><tr><th>名称</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
@@ -431,7 +436,7 @@
         <tbody id="flower-stk-out"></tbody></table></div>
     </div>
 
-    <h3 class="flow-h">📊 ETF 主力资金流向</h3>
+    <h3 class="flow-h">📊 ETF 主力资金流向 <span class="er-stamp" id="er-stamp-3"></span></h3>
     <div class="cards" id="floweretf" style="margin-bottom:8px"></div>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
@@ -1027,15 +1032,38 @@ function renderFlow(){
     return;
   }
   // 数据更新时间 + 新鲜度
-  let fresh='', reFresh='';
+  let ageH = null;
   try{
-    const u=new Date(er.updated); const h=(Date.now()-u.getTime())/36e5;
-    fresh = h<1?'（'+h.toFixed(0)+'小时内，较新）':(h<12?'（'+h.toFixed(0)+'小时前）':'（'+h.toFixed(0)+'小时前，建议发新表刷新）');
+    const u=new Date(er.updated); ageH = (Date.now()-u.getTime())/36e5;
   }catch(e){}
+  const fresh = ageH==null?'（时间未知）':
+    ageH<1?'（'+Math.round(ageH*60)+'分钟内，较新）':
+    ageH<2?'（'+ageH.toFixed(1)+'小时前）':
+    ageH<12?'（'+ageH.toFixed(0)+'小时前 ⚠️）':
+    '（'+ageH.toFixed(0)+'小时前 ⛔ 强烈建议发新表刷新）';
   const autoNote = ER_REFRESH_AT ? ' ｜ 本页已于 '+ER_REFRESH_AT+' 自动刷新' : '';
   erBox.innerHTML = '数据更新于 <b>'+(er.updated||'—')+'</b> '+fresh+
     ' ｜ 主力净流入由东财行情计算，单位「亿」。盘中每 30 分钟自动刷新（覆盖 10:30 / 14:30 等关键时点）。'+autoNote+
     '<span id="flowerrefresh" style="cursor:pointer;color:var(--accent);margin-left:8px" onclick="refreshER()">↻ 手动刷新</span>';
+  // 陈旧数据醒目横幅
+  const warn = document.getElementById('flower-stale-warn');
+  if(warn && ageH!=null){
+    if(ageH >= 2){
+      warn.style.display='block';
+      const hh = ageH.toFixed(1);
+      const ts = (er.updated||'—').slice(11,16);
+      warn.innerHTML = '⚠️ 资金面数据采集于 <b>'+ts+'</b>（已过 <b>'+hh+' 小时</b>），与当前收盘行情可能差异较大。<br>'+
+        '个股当日涨跌幅仅供参考，<b>请以券商实时行情为准</b>。点右上「↻ 手动刷新」或发新 K/D 表可立即拉取最新。';
+    } else {
+      warn.style.display='none';
+    }
+  }
+  // 每张表格标题旁的时间戳小标记
+  const stampClass = ageH==null?'':ageH<1?'fresh':ageH<2?'fresh':'stale';
+  const stampHtml = '<span class="er-stamp '+(ageH!=null && ageH>=2?'stale':'fresh')+'">🕐 '+(er.updated||'—').slice(11,16)+' · '+(ageH==null?'?':ageH.toFixed(1)+'h')+'</span>';
+  ['er-stamp-0','er-stamp-1','er-stamp-2','er-stamp-3'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.outerHTML = stampHtml;
+  });
   // 板块/个股 行渲染
   const erSecRow = x => '<tr><td>'+esc(x.name||'—')+'</td><td>'+fmtMetric2(x.chg)+'</td>'+
     '<td class="flow-net '+(x.net>0?'in':'out')+'">'+(x.net>0?'+':'')+x.net.toFixed(2)+'</td></tr>';
