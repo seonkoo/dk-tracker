@@ -1113,11 +1113,11 @@ def build_flow(records, stocks, config):
     }
 
 
-def _build_ai_prompt(flow, er):
+def _build_ai_prompt(flow, er, obs=None):
     """把 DK 信号面 + 真实资金面数据组织成给智谱的分析 prompt。"""
     t = flow.get("timeline", [])
     tl = "\n".join("  %s: D=%d K=%d 净信号%+d 当日均涨%s%%" % (
-        x["date"], x["d"], x["k"], x["net"], x.get("avg_chg")) for x in t[-3:])
+        x["date"], x["d"], x["k"], x["net"], x.get("avg_chg")) for x in t[-5:])
     st = flow.get("styles", {})
     style_lines = []
     for s, v in st.items():
@@ -1143,11 +1143,27 @@ def _build_ai_prompt(flow, er):
             "ETF分组净流入(亿): " + str(er.get("etf", {}).get("byGroup", {})),
             "财报舆情: " + str(er.get("earnings", {})),
         ]
-    return """请基于以下数据输出一份A股资金流向与风格切换的市场解读（250-300字）。要求：
+    # 观察池实况（价格动作硬数据，用于约束情绪判断）
+    obs_block = "（无）"
+    if obs and isinstance(obs, dict):
+        s = obs.get("summary", {})
+        if s:
+            obs_block = (
+                "观察池样本=%d（活跃%d/已流出%d/待同步%d）；可评估=%d 只中 上涨%d / 下跌%d / 平%d；"
+                "胜率=%s%% 平均累计涨幅=%s%% 中位累计涨幅=%s%%"
+                % (
+                    s.get("total_observed", 0), s.get("active", 0), s.get("exited", 0),
+                    s.get("pending", 0), s.get("measurable", 0), s.get("up", 0),
+                    s.get("down", 0), s.get("flat", 0), s.get("win_rate"),
+                    s.get("avg_ret"), s.get("median_ret"),
+                )
+            )
+    return """请基于以下数据输出一份A股资金流向与风格切换的市场解读（300-360字）。要求：
 1. 先给出今日资金方向总体判断（流入/流出/避险）；
 2. 指出风格与行业切换信号——哪些行业资金流入、哪些流出；特别区分蓝筹内部差异：银行等防御蓝筹出D点=避险，科技蓝筹出D点=进攻，含义不同；
 3. 点评蓝筹避险信号与关键风险；
-4. 若 DK 信号与真实主力资金方向矛盾，明确指出背离。
+4. 若 DK 信号与真实主力资金方向矛盾，明确指出背离；
+5. 【重点·必须以价格动作为准】结合【观察池实况】的涨跌家数与胜率、以及近几日「当日均涨」的正负变化，明确判断「市场情绪是否已修复 / 仍在退潮 / 刚刚企稳」——给出一句话结论。严格约束：(a) 只有当【观察池】胜率明显回升且当日均涨转正(大于0)时才可下「已修复」结论；(b) 若当日均涨为负或胜率仍低，不得写「均价涨转正回升」「已修复」，应如实写「仍在退潮/尚未修复/刚有企稳迹象」并交代依据；(c) 不要凭DK净信号计数自行脑补与价格相反的微观描述（如「D点持续减少」须对照时间线真实数字）。
 语言流畅、口语化、像资深分析师给客户的盘中复盘，不要流水账列数据。
 
 【DK信号面·每日趋势】
@@ -1161,12 +1177,15 @@ def _build_ai_prompt(flow, er):
 
 【蓝筹动向】%s
 
+【观察池实况·价格动作（情绪判断的硬依据）】%s
+
 【真实资金面（earnings-radar）】
 %s""" % (tl, "\n".join(style_lines) or "  （数据不足）", ind_lines,
-            blue_lines, "\n".join(er_lines) if er_lines else "（数据缺失）")
+            blue_lines, obs_block,
+            "\n".join(er_lines) if er_lines else "（数据缺失）")
 
 
-def fetch_ai_summary(flow, er, config, timeout=60):
+def fetch_ai_summary(flow, er, config, obs=None, timeout=60):
     """调用智谱 GLM 生成资金流向文字解读；未配置 key 或失败返回 None（前端隐藏）。
     key 来源优先级：config.zhipu_api_key > 环境变量 ZHIPU_API_KEY > /root/.codebuddy/artifact/.zhipukey
     （key 只存沙箱，绝不进仓库/前端）。"""
@@ -1191,7 +1210,7 @@ def fetch_ai_summary(flow, er, config, timeout=60):
         "model": model,
         "messages": [
             {"role": "system", "content": "你是资深A股策略分析师，擅长通过资金流向与DK信号解读市场风格切换、板块轮动与风险。输出简洁专业的中文分析，直接给结论。"},
-            {"role": "user", "content": _build_ai_prompt(flow, er)},
+            {"role": "user", "content": _build_ai_prompt(flow, er, obs)},
         ],
         "temperature": 0.6,
         "max_tokens": 800,
@@ -1240,7 +1259,7 @@ def generate_app(records, stocks, obs, config):
     klines = build_klines_for_pullback(records, days_window=30)
     flow = build_flow(records, stocks, config)
     er = fetch_earnings_radar()
-    flow["ai_summary"] = fetch_ai_summary(flow, er, config)
+    flow["ai_summary"] = fetch_ai_summary(flow, er, config, obs)
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
