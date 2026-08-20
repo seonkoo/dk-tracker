@@ -404,7 +404,7 @@
       注：DK 信号由选股表每日状态推断，「轨迹」为各记录日状态（K=卖出信号 / D=买入信号 / −=无）。本模块结论为信号层面的资金方向推断，<b>非投资建议</b>。
     </div>
 
-    <div class="flow-divider">📡 真实资金面 · earnings-radar 接入</div>
+    <div class="flow-divider">📡 真实资金面 · 东财实时行情（盘中 10:30 / 14:30 自动刷新）</div>
     <div class="sub" id="flowerstatus" style="margin:-2px 0 8px"></div>
     <div id="flower-stale-warn" style="display:none;margin:-2px 0 10px;padding:8px 12px;border-radius:8px;background:#fff1f2;color:#9f1239;font-size:13px;font-weight:600;line-height:1.5"></div>
 
@@ -1025,7 +1025,7 @@ function renderFlow(){
   const er = SEED.er || {};
   const erBox = document.getElementById('flowerstatus');
   if(!er.available){
-    erBox.innerHTML = '⚠️ 未接入 earnings-radar 数据（构建期拉取失败）。上方「DK 信号面」仍可用。';
+    erBox.innerHTML = '⚠️ 东财实时行情拉取失败（构建期网络异常）。上方「DK 信号面」仍可用。';
     ['flower-ind-in','flower-ind-out','flower-con-in','flower-stk-in','flower-stk-out',
      'flower-etf-in','flower-etf-out','flower-ovs','flower-earn','floweretf','flowxcheck']
      .forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=''; });
@@ -1043,7 +1043,7 @@ function renderFlow(){
     '（'+ageH.toFixed(0)+'小时前 ⛔ 强烈建议发新表刷新）';
   const autoNote = ER_REFRESH_AT ? ' ｜ 本页已于 '+ER_REFRESH_AT+' 自动刷新' : '';
   erBox.innerHTML = '数据更新于 <b>'+(er.updated||'—')+'</b> '+fresh+
-    ' ｜ 主力净流入由东财行情计算，单位「亿」。盘中每 30 分钟自动刷新（覆盖 10:30 / 14:30 等关键时点）。'+autoNote+
+    ' ｜ 行业/ETF/个股主力净流入由东财行情<b>实时</b>计算，单位「亿」（构建期已实时；点「↻」或停留此页每 30 分钟自动再拉最新）。'+autoNote+
     '<span id="flowerrefresh" style="cursor:pointer;color:var(--accent);margin-left:8px" onclick="refreshER()">↻ 手动刷新</span>';
   // 陈旧数据醒目横幅
   const warn = document.getElementById('flower-stale-warn');
@@ -1158,22 +1158,57 @@ function compactER(d){
   };
 }
 
-// 运行时实时刷新 earnings-radar latest.json（ghproxy 支持跨域 CORS *），成功则重渲染
+// 运行时实时刷新：直接拉东财 ulist 实时行情（经 ghproxy 代理保证跨域 CORS），
+// 用本地监控池（行业 BK / ETF）+ 观察池个股重建实时资金面，覆盖 er 的实时核心字段。
 // silent=true 时为盘中自动轮询调用（不打扰按钮文案）
+function _emSecid(code, market){
+  if(code[0]==='B') return '90.'+code;
+  if(market!=null) return market+'.'+code;
+  const l=code[0];
+  return ('569'.indexOf(l)>=0) ? ('1.'+code) : ('0.'+code);
+}
 let ER_REFRESH_AT='';
-function refreshER(silent){
-  const url='https://ghproxy.net/https://raw.githubusercontent.com/seonkoo/earnings-radar/main/latest.json';
+async function refreshER(silent){
   const btn=document.getElementById('flowerrefresh'); if(btn && !silent) btn.textContent='刷新中…';
-  fetch(url).then(r=>r.json()).then(d=>{
-    if(!d || !d.industry){ throw new Error('空数据'); }
-    SEED.er = compactER(d);
-    if(!silent) ER_REFRESH_AT = new Date().toTimeString().slice(0,5);
+  const pool = SEED.em_pool || {industry:[], etf:[]};
+  let stockCodes=[];
+  if(SEED.obs && SEED.obs.stocks) stockCodes = SEED.obs.stocks.map(s=>s.code||s);
+  else stockCodes = Object.keys(SEED.names||{});
+  const items=[];
+  pool.industry.forEach(bk=>items.push('90.'+bk));
+  pool.etf.forEach(e=>items.push(e[1]+'.'+e[0]));
+  stockCodes.forEach(c=>items.push(_emSecid(c)));
+  const got={};
+  try{
+    for(let i=0;i<items.length;i+=50){
+      const secids=items.slice(i,i+50).join(',');
+      const u='https://ghproxy.net/https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids='
+              +encodeURIComponent(secids)+'&fields=f12,f14,f62,f3';
+      const d=await fetch(u).then(r=>r.json());
+      (d.data&&d.data.diff||[]).forEach(x=>{ if(x.f12&&x.f14&&x.f14!=='_')
+        got[x.f12]={name:x.f14,net:Math.round(x.f62/1e8*100)/100,chg:x.f3}; });
+    }
+    const ind=[]; pool.industry.forEach(bk=>{ if(got[bk]) ind.push({name:got[bk].name,code:bk,chg:got[bk].chg,net:got[bk].net}); });
+    const ind_in=ind.slice().sort((a,b)=>b.net-a.net).slice(0,15);
+    const ind_out=ind.slice().sort((a,b)=>a.net-b.net).slice(0,15);
+    const etf=[]; pool.etf.forEach(e=>{ const code=e[0]; if(got[code]) etf.push({name:got[code].name,code:code,pct:got[code].chg,net:got[code].net,group:e[2]}); });
+    const etf_in=etf.slice().sort((a,b)=>b.net-a.net).slice(0,10);
+    const etf_out=etf.slice().sort((a,b)=>a.net-b.net).slice(0,10);
+    const byGroup={}; etf.forEach(it=>{ byGroup[it.group]=Math.round((byGroup[it.group]||0)+it.net*100)/100; });
+    const stk=[]; stockCodes.forEach(c=>{ if(got[c]) stk.push({name:(SEED.names&&SEED.names[c])||c,code:c,chg:got[c].chg,net:got[c].net}); });
+    const stk_in=stk.slice().sort((a,b)=>b.net-a.net).slice(0,12);
+    const stk_out=stk.slice().sort((a,b)=>a.net-b.net).slice(0,8);
+    if(!SEED.er) SEED.er={available:true};
+    SEED.er.available=true;
+    SEED.er.industry_in=ind_in; SEED.er.industry_out=ind_out;
+    SEED.er.etf={byGroup:byGroup,topIn:etf_in,topOut:etf_out};
+    SEED.er.stocks_in=stk_in; SEED.er.stocks_out=stk_out;
+    SEED.er.updated=new Date().toISOString().slice(0,19);
+    SEED.er.source='东财实时(ulist)';
+    if(!silent) ER_REFRESH_AT=new Date().toTimeString().slice(0,5);
     renderFlow();
-    if(btn) btn.textContent = silent ? '↻ 自动' : '↻ 已刷新';
-  }).catch(e=>{
-    if(btn) btn.textContent='↻ 重试';
-    console.warn('ER 实时刷新失败', e);
-  });
+  }catch(e){ console.warn('东财实时刷新失败', e); if(btn && !silent) btn.textContent='↻ 重试'; return; }
+  if(btn) btn.textContent = silent ? '↻ 自动' : '↻ 已刷新';
 }
 
 function switchTab(idx,el){

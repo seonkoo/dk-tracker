@@ -444,6 +444,138 @@ def _compact_er(d):
     }
 
 
+# ============================================================
+#  真实资金面 · 东财实时行情（不再依赖 earnings-radar 的陈旧快照）
+#  - 行业板块 / ETF / 个股主力净流入 全部用 push2delay.eastmoney.com 实时拉取
+#  - earnings-radar 仅作增强源（概念/海外/财报），拉不到则优雅降级
+# ============================================================
+EM_HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"}
+
+# 主流行业板块（东财 BK 代码，已验证有效）；数值实时拉取
+EM_INDUSTRY_POOL = [
+    "BK0473", "BK0474", "BK0475", "BK0451", "BK0437", "BK0478", "BK0422", "BK1037", "BK1031",
+    "BK1036", "BK1038", "BK1039", "BK0448", "BK0730", "BK0738", "BK0739", "BK0480", "BK0735",
+    "BK0727", "BK1040", "BK0481", "BK0482", "BK0477", "BK0438", "BK0450", "BK0479", "BK0421",
+    "BK0424", "BK0425", "BK0731", "BK0440", "BK0433", "BK0436", "BK0427", "BK0447", "BK0454",
+]
+# ETF 监控池 (code, market, group)；market: 1=沪 0=深
+EM_ETF_POOL = [
+    ("588170", 1, "主题·科创半导体"), ("588000", 1, "宽基·科创50"), ("588080", 1, "宽基·科创50"),
+    ("510300", 1, "宽基·沪深300"), ("510500", 1, "宽基·中证500"), ("159915", 0, "宽基·创业板"),
+    ("512100", 1, "宽基·中证1000"), ("510050", 1, "宽基·上证50"), ("159949", 0, "宽基·创业板50"),
+    ("512480", 1, "行业·半导体"), ("588200", 1, "行业·科创芯片"), ("512000", 1, "行业·券商"),
+    ("512880", 1, "行业·证券"), ("512660", 1, "行业·军工"), ("515050", 1, "行业·5G"),
+    ("516970", 1, "行业·基建"), ("515880", 1, "行业·通信"), ("512760", 1, "行业·芯片"),
+    ("159995", 0, "行业·芯片"), ("512690", 1, "行业·酒"), ("512010", 1, "行业·医药"),
+    ("515790", 1, "行业·光伏"), ("515030", 1, "行业·新能源车"), ("512800", 1, "行业·银行"),
+    ("512200", 1, "行业·房地产"), ("515710", 1, "行业·食品"), ("159928", 0, "行业·消费"),
+    ("518880", 1, "商品·黄金"), ("159980", 0, "商品·有色金属"), ("159981", 0, "商品·能源化工"),
+    ("513180", 1, "跨境·恒生科技"), ("513120", 1, "跨境·港股创新药"), ("513100", 1, "跨境·纳指"),
+    ("159920", 0, "跨境·恒生"), ("513500", 1, "跨境·标普500"),
+    ("511360", 1, "货币·短融"), ("511880", 1, "货币·银华日利"),
+]
+
+
+def _em_secid(code, market=None):
+    """代码 → 东财 secid。行业/概念 BK 用 90. 前缀；个股/ETF 按市场前缀。"""
+    if code.startswith("BK"):
+        return "90." + code
+    if market is not None:
+        return "%d.%s" % (int(market), code)
+    lead = code[0]
+    return ("0." + code) if lead in "0168" else ("1." + code)
+
+
+def _ulist_batch(secids, fields="f12,f14,f62,f3", timeout=20):
+    url = ("https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=%s&fields=%s"
+           % (secids, fields))
+    req = urllib.request.Request(url, headers=EM_HEADERS)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return (json.loads(r.read().decode("utf-8", "ignore")).get("data") or {}).get("diff") or []
+
+
+def fetch_em_flow(stock_codes, names, timeout=30):
+    """拉取东财实时主力资金（行业板块/ETF/个股），返回与页面兼容的结构。"""
+    import datetime
+    items = []
+    for bk in EM_INDUSTRY_POOL:
+        items.append(("90." + bk, "industry", {"code": bk}))
+    for code, mkt, grp in EM_ETF_POOL:
+        items.append(("%d.%s" % (mkt, code), "etf", {"code": code, "group": grp}))
+    for c in stock_codes:
+        items.append((_em_secid(c), "stock", {"code": c}))
+    got = {}
+    for i in range(0, len(items), 50):
+        batch = items[i:i + 50]
+        secids = ",".join(b[0] for b in batch)
+        try:
+            diffs = _ulist_batch(secids, timeout=timeout)
+            for x in diffs:
+                f12 = x.get("f12")
+                f14 = x.get("f14")
+                if f12 and f14 and f14 != "_":
+                    got[f12] = {"name": f14, "net": round((x.get("f62") or 0) / 1e8, 2),
+                                "chg": x.get("f3")}
+        except Exception as e:
+            print("  [东财实时] 批次 %d-%d 拉取失败: %s" % (i, i + len(batch), e))
+    # 行业板块
+    ind = []
+    for bk in EM_INDUSTRY_POOL:
+        if bk in got:
+            v = got[bk]
+            ind.append({"name": v["name"], "code": bk, "chg": v["chg"], "net": v["net"]})
+    ind_in = sorted(ind, key=lambda z: -z["net"])[:15]
+    ind_out = sorted(ind, key=lambda z: z["net"])[:15]
+    # ETF
+    etf_items = []
+    for code, mkt, grp in EM_ETF_POOL:
+        if code in got:
+            v = got[code]
+            etf_items.append({"name": v["name"], "code": code, "pct": v["chg"],
+                              "net": v["net"], "group": grp})
+    etf_in = sorted(etf_items, key=lambda z: -z["net"])[:10]
+    etf_out = sorted(etf_items, key=lambda z: z["net"])[:10]
+    byGroup = {}
+    for it in etf_items:
+        byGroup[it["group"]] = round(byGroup.get(it["group"], 0) + it["net"], 2)
+    # 个股（观察池，实时 TOP）
+    stk = []
+    for c in stock_codes:
+        if c in got:
+            v = got[c]
+            stk.append({"name": names.get(c, c), "code": c, "chg": v["chg"], "net": v["net"]})
+    stk_in = sorted(stk, key=lambda z: -z["net"])[:12]
+    stk_out = sorted(stk, key=lambda z: z["net"])[:8]
+    return {
+        "available": True,
+        "updated": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "source": "东财实时(ulist)",
+        "industry_in": ind_in, "industry_out": ind_out,
+        "etf": {"byGroup": byGroup, "topIn": etf_in, "topOut": etf_out},
+        "stocks_in": stk_in, "stocks_out": stk_out,
+    }
+
+
+def build_realtime_er(stocks, config):
+    """实时资金面 = 东财实时核心 + earnings-radar 增强（概念/海外/财报，best-effort）。"""
+    names = stocks if isinstance(stocks, dict) else {}
+    em = fetch_em_flow(list(names.keys()), names)
+    er_raw = fetch_earnings_radar()
+    if er_raw:
+        em["concept_in"] = er_raw.get("concept_in", []) or []
+        em["overseas"] = er_raw.get("overseas", []) or []
+        em["earnings"] = er_raw.get("earnings", {}) or {}
+        em["er_source"] = "earnings-radar"
+        print("  [资金面] 东财实时(行业/ETF/个股) + earnings-radar 增强(概念/海外/财报) 已并入")
+    else:
+        em["concept_in"] = []
+        em["overseas"] = []
+        em["earnings"] = {}
+        em["er_source"] = "unavailable"
+        print("  [资金面] 东财实时(行业/ETF/个股)；earnings-radar 不可达，概念/海外/财报降级隐藏")
+    return em
+
+
 def fetch_earnings_radar(timeout=20):
     """拉取 earnings-radar 最新快照；失败返回 None（UI 降级为 unavailable）。"""
     last_err = ""
@@ -1258,7 +1390,7 @@ def generate_app(records, stocks, obs, config):
     bluechips = sorted(set(load_json(BLUECHIPS_PATH, {}).keys()))
     klines = build_klines_for_pullback(records, days_window=30)
     flow = build_flow(records, stocks, config)
-    er = fetch_earnings_radar()
+    er = build_realtime_er(stocks, config)
     flow["ai_summary"] = fetch_ai_summary(flow, er, config, obs)
     seed = {
         "updated": records.get("updated"),
@@ -1269,6 +1401,8 @@ def generate_app(records, stocks, obs, config):
         "klines": klines,
         "flow": flow,
         "er": er if er else {"available": False},
+        "em_pool": {"industry": EM_INDUSTRY_POOL,
+                    "etf": [list(x) for x in EM_ETF_POOL]},
     }
     seed_b64 = base64.b64encode(json.dumps(seed, ensure_ascii=False).encode("utf-8")).decode("ascii")
     n = chunk_write(seed_b64, "seed_p", "__SEED_B64")
