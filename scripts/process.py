@@ -323,7 +323,7 @@ def fetch_kline(code, beg, end, mkt=None):
     from datetime import date as _date, timedelta
     today = _date.fromisoformat(end)
     beg_use = (today - timedelta(days=200)).isoformat()
-    url = ("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+    url = ("https://ifzq.gtimg.cn/appstock/app/fqkline/get"
            "?param=%s%s,day,%s,%s,200,qfq" % (mkt, code, beg_use, end))
     try:
         req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
@@ -345,7 +345,7 @@ def fetch_kline_full(code, days=30, mkt=None):
     """拉腾讯前复权日K线，返回浏览器端 evalPullback 所需的 [date,open,close,high,low,vol] 数组列表。"""
     if mkt is None:
         mkt = market_prefix(code)
-    url = ("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+    url = ("https://ifzq.gtimg.cn/appstock/app/fqkline/get"
            "?param=%s%s,day,,,%d,qfq" % (mkt, code, days))
     try:
         req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})

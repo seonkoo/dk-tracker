@@ -798,7 +798,7 @@ async function fetchKline(code){
   // 无缓存时再尝试实时拉取（持仓等用户自选股）
   try{
     const mkt = marketPrefix(code);
-    const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
+    const url = 'https://ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
     const r = await fetch(url);
     const d = await r.json();
     const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
