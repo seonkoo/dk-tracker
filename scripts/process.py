@@ -183,7 +183,10 @@ def read_xlsx(path, config, kind=None):
 def process_day(k_path, d_path, date, config):
     k = read_xlsx(k_path, config, "K")
     d = read_xlsx(d_path, config, "D")
-    print("  [统计] %s  K表=%d行  D表=%d行" % (date, len(k), len(d)))
+    # 用户要求排除北交所（92/93/8/4 开头）
+    k = [i for i in k if not is_bj(i["code"])]
+    d = [i for i in d if not is_bj(i["code"])]
+    print("  [统计] %s  K表=%d行  D表=%d行 (已排除北交所)" % (date, len(k), len(d)))
 
     stocks = load_json(STOCKS_PATH, {})
     for it in k + d:
@@ -205,6 +208,9 @@ def process_day(k_path, d_path, date, config):
 
     records = load_json(RECORDS_PATH, {"updated": None, "days": []})
     before = len(records.get("days", []))
+    removed = purge_bj(records)
+    if removed:
+        print("  [北交所] 已从历史数据剔除 %d 个信号" % removed)
     days = [x for x in records.get("days", []) if x["date"] != date]
     days.append(day)
     days.sort(key=lambda x: x["date"])
@@ -314,8 +320,61 @@ def market_prefix(code):
     return "sh"
 
 
+def is_bj(code):
+    """是否北交所/新三板代码（92/93 开头或 8/4 开头）。用户要求排除北交所股票。"""
+    c = str(code)
+    return c[:2] in ("92", "93") or c[0] in ("8", "4")
+
+
+def purge_bj(records):
+    """把 records.days 中所有北交所代码剔除（含历史），返回剔除数量。"""
+    removed = 0
+    for day in records.get("days", []):
+        for key in ("k", "d"):
+            before = day.get(key, [])
+            kept = [c for c in before if not is_bj(c)]
+            removed += len(before) - len(kept)
+            day[key] = kept
+    return removed
+
+
+# 腾讯 K线多域名轮换：web.ifzq 曾整批 501(接口下线)，裸域名/代理域名被高频限流后也 501。
+# 轮换可摊薄单个域名请求量；全部失败后由新浪 quotes.sina.cn 兜底（不受腾讯限流影响）。
+TX_KLINE_HOSTS = [
+    "https://ifzq.gtimg.cn/appstock/app/fqkline/get",
+    "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/fqkline/get",
+    "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+]
+_tx_kline_idx = 0
+
+
+def _next_tx_host():
+    global _tx_kline_idx
+    h = TX_KLINE_HOSTS[_tx_kline_idx % len(TX_KLINE_HOSTS)]
+    _tx_kline_idx += 1
+    return h
+
+
+def _fetch_sina_kline_full(code, days):
+    """新浪日K线兜底，返回 [date,open,close,high,low,vol]（不复权，顺序与腾讯对齐）。"""
+    sym = market_prefix(code) + code
+    url = ("https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData"
+           "?symbol=%s&scale=240&ma=no&datalen=%d" % (sym, max(days, 60)))
+    req = urllib.request.Request(url, headers={"Referer": "https://finance.sina.com.cn/"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        b = r.read().decode("utf-8", "ignore")
+    arr = json.loads(b) if b.strip().startswith("[") else []
+    if not arr:
+        return None
+    out = []
+    for x in arr:
+        out.append([x["day"], float(x["open"]), float(x["close"]),
+                    float(x["high"]), float(x["low"]), float(x.get("volume") or 0)])
+    return out
+
+
 def fetch_kline(code, beg, end, mkt=None):
-    """拉腾讯前复权日K线，返回 [{date, close}] 或 None。
+    """拉前复权日K线（腾讯 3 域名轮换 + 新浪兜底），返回 [{date, close}] 或 None。
     重要：腾讯 fqkline 接口在 beg 接近 end 时会漏掉最近一日；强制把 beg 拉远到 end-200 天
     保证最新收盘日一定包含。早期多余数据由 _close_on_or_before 按 entry_date 过滤。"""
     if mkt is None:
@@ -323,42 +382,63 @@ def fetch_kline(code, beg, end, mkt=None):
     from datetime import date as _date, timedelta
     today = _date.fromisoformat(end)
     beg_use = (today - timedelta(days=200)).isoformat()
-    url = ("https://ifzq.gtimg.cn/appstock/app/fqkline/get"
-           "?param=%s%s,day,%s,%s,200,qfq" % (mkt, code, beg_use, end))
+    last_err = None
+    for _ in range(len(TX_KLINE_HOSTS)):
+        host = _next_tx_host()
+        url = "%s?param=%s%s,day,%s,%s,200,qfq" % (host, mkt, code, beg_use, end)
+        try:
+            req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                b = json.loads(r.read().decode("utf-8", "ignore"))
+            node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
+                or (b.get("data") or {}).get(code) or {}
+            arr = node.get("qfqday") or node.get("day") or []
+            if arr:
+                return [{"date": line[0], "close": float(line[2])} for line in arr]
+            last_err = "empty"
+        except Exception as e:
+            last_err = e
+    # 腾讯全失败 → 新浪兜底
     try:
-        req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            b = json.loads(r.read().decode("utf-8", "ignore"))
-        node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
-            or (b.get("data") or {}).get(code) or {}
-        arr = node.get("qfqday") or node.get("day") or []
-        out = []
-        for line in arr:
-            out.append({"date": line[0], "close": float(line[2])})
-        return out if out else None
+        arr = _fetch_sina_kline_full(code, 240)
+        if arr:
+            return [{"date": x[0], "close": x[2]} for x in arr]
     except Exception as e:
-        print("  [价格] 拉取失败 %s: %s" % (code, e))
-        return None
+        last_err = e
+    print("  [价格] 拉取失败 %s: %s" % (code, last_err))
+    return None
 
 
 def fetch_kline_full(code, days=30, mkt=None):
-    """拉腾讯前复权日K线，返回浏览器端 evalPullback 所需的 [date,open,close,high,low,vol] 数组列表。"""
+    """拉日K线（腾讯 3 域名轮换 + 新浪兜底），返回浏览器端 evalPullback 所需的 [date,open,close,high,low,vol] 数组列表。"""
     if mkt is None:
         mkt = market_prefix(code)
-    url = ("https://ifzq.gtimg.cn/appstock/app/fqkline/get"
-           "?param=%s%s,day,,,%d,qfq" % (mkt, code, days))
+    last_err = None
+    for _ in range(len(TX_KLINE_HOSTS)):
+        host = _next_tx_host()
+        url = "%s?param=%s%s,day,,,%d,qfq" % (host, mkt, code, days)
+        try:
+            req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                b = json.loads(r.read().decode("utf-8", "ignore"))
+            node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
+                or (b.get("data") or {}).get(code) or {}
+            arr = node.get("qfqday") or node.get("day") or []
+            # 腾讯顺序: date, open, close, high, low, volume; evalPullback 也按此顺序读取
+            if arr:
+                return [[r[0], float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])] for r in arr]
+            last_err = "empty"
+        except Exception as e:
+            last_err = e
+    # 腾讯全失败 → 新浪兜底
     try:
-        req = urllib.request.Request(url, headers={"Referer": "https://gu.qq.com/"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            b = json.loads(r.read().decode("utf-8", "ignore"))
-        node = (b.get("data") or {}).get("%s%s" % (mkt, code)) \
-            or (b.get("data") or {}).get(code) or {}
-        arr = node.get("qfqday") or node.get("day") or []
-        # 腾讯顺序: date, open, close, high, low, volume; evalPullback 也按此顺序读取
-        return [[r[0], float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[5])] for r in arr] if arr else None
+        arr = _fetch_sina_kline_full(code, days)
+        if arr:
+            return arr
     except Exception as e:
-        print("  [K线] 拉取失败 %s: %s" % (code, e))
-        return None
+        last_err = e
+    print("  [K线] 拉取失败 %s: %s" % (code, last_err))
+    return None
 
 
 def build_klines_for_pullback(records, days_window=30):
@@ -1511,6 +1591,7 @@ def main():
 
     if args.regen:
         records = load_json(RECORDS_PATH, {"updated": None, "days": []})
+        purge_bj(records)
         stocks = load_json(STOCKS_PATH, {})
         analysis = build_analysis(records, stocks, config)
         obs = build_obs(records, config)
@@ -1524,6 +1605,7 @@ def main():
             raise SystemExit("[错误] 文件名无日期且未用 --date 指定，无法定位当天。")
         process_day(args.k, args.d, date, config)
         records = load_json(RECORDS_PATH, {"updated": None, "days": []})
+        purge_bj(records)
         stocks = load_json(STOCKS_PATH, {})
         analysis = build_analysis(records, stocks, config)
         obs = build_obs(records, config)

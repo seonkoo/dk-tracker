@@ -795,15 +795,24 @@ async function fetchKline(code){
   // 优先使用服务端预烧录的 K 线（避免手机浏览器跨域/网络问题）
   const cache = (window.SEED_DATA && window.SEED_DATA.klines) || {};
   if(cache[code] && cache[code].length) return cache[code].slice(-20);
-  // 无缓存时再尝试实时拉取（持仓等用户自选股）
+  // 无缓存时再尝试实时拉取（持仓等用户自选股）；腾讯多域名轮换（web.ifzq 曾下线，避免单点）
   try{
     const mkt = marketPrefix(code);
-    const url = 'https://ifzq.gtimg.cn/appstock/app/fqkline/get?param='+mkt+code+',day,,,30,qfq';
-    const r = await fetch(url);
-    const d = await r.json();
-    const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
-    const arr = node.qfqday || node.day || [];
-    return arr.slice(-20);
+    const hosts = ['https://proxy.finance.qq.com/ifzqgtimg/appstock/app/fqkline/get',
+                   'https://ifzq.gtimg.cn/appstock/app/fqkline/get',
+                   'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get'];
+    let arr = null;
+    for(const host of hosts){
+      try{
+        const url = host+'?param='+mkt+code+',day,,,30,qfq';
+        const r = await fetch(url);
+        const d = await r.json();
+        const node = (d.data && (d.data[mkt+code] || d.data[code])) || {};
+        const a = node.qfqday || node.day || [];
+        if(a && a.length){ arr = a; break; }
+      }catch(e){ /* 换下一域名 */ }
+    }
+    return arr ? arr.slice(-20) : null;
   }catch(e){ return null; }
 }
 function avg(nums){ if(!nums.length) return 0; return nums.reduce((a,b)=>a+b,0)/nums.length; }
