@@ -237,19 +237,24 @@
     <button id="f_rev" onclick="setF('rev',this)">仅反转</button>
     <button id="f_k" onclick="setF('k',this)">当前K</button>
     <button id="f_d" onclick="setF('d',this)">当前D</button>
-    <select id="sort" onchange="render()" style="padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:13px">
-      <option value="cap_desc">市值↓ 大→小</option>
-      <option value="cap_asc">市值↑ 小→大</option>
-      <option value="rev">反转优先</option>
-      <option value="code">代码</option>
-    </select>
+    <span class="tl" style="align-self:center">点表头列可排序 ↕</span>
   </div>
 
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>代码</th><th>名称</th><th>市值</th><th>当前</th><th>涨幅%</th><th>首现</th><th>末次</th>
-        <th>K</th><th>D</th><th>反转</th><th>连续</th><th>状态时间线</th>
+        <th class="sortable" data-sort="code" onclick="p0head(this)">代码</th>
+        <th class="sortable" data-sort="name" onclick="p0head(this)">名称</th>
+        <th class="sortable" data-sort="cap" onclick="p0head(this)">市值</th>
+        <th class="sortable" data-sort="current" onclick="p0head(this)">当前</th>
+        <th class="sortable" data-sort="metric" onclick="p0head(this)">涨幅%</th>
+        <th class="sortable" data-sort="first_date" onclick="p0head(this)">首现</th>
+        <th class="sortable" data-sort="last_date" onclick="p0head(this)">末次</th>
+        <th class="sortable" data-sort="nK" onclick="p0head(this)">K</th>
+        <th class="sortable" data-sort="nD" onclick="p0head(this)">D</th>
+        <th class="sortable" data-sort="rev" onclick="p0head(this)">反转</th>
+        <th class="sortable" data-sort="trailing" onclick="p0head(this)">连续</th>
+        <th class="sortable" data-sort="timeline" onclick="p0head(this)">状态时间线</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -264,7 +269,9 @@
     <div class="table-wrap">
       <table class="obs-table">
         <thead><tr>
-          <th>代码</th><th>名称</th><th>首次D</th>
+          <th class="sortable" data-sort="code" onclick="sortObs('code')">代码</th>
+          <th class="sortable" data-sort="name" onclick="sortObs('name')">名称</th>
+          <th class="sortable" data-sort="entry_date" onclick="sortObs('entry_date')">首次D</th>
           <th class="sortable" data-sort="holding_days" onclick="sortObs('holding_days')">持有天</th>
           <th class="sortable" data-sort="mktcap" onclick="sortObs('mktcap')">总市值</th>
           <th class="sortable" data-sort="net_inflow" onclick="sortObs('net_inflow')">资金净流入</th>
@@ -272,7 +279,7 @@
           <th class="sortable" data-sort="ret" onclick="sortObs('ret')">累计涨幅%</th>
           <th class="sortable" data-sort="bench_ret" onclick="sortObs('bench_ret')">基准%</th>
           <th class="sortable" data-sort="excess" onclick="sortObs('excess')">超额%</th>
-          <th>状态</th>
+          <th class="sortable" data-sort="status" onclick="sortObs('status')">状态</th>
         </tr></thead>
         <tbody id="obstbody"></tbody>
       </table>
@@ -301,7 +308,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>代码</th><th>名称</th><th>最新价</th><th>5日线</th><th>量比</th><th>信号</th><th>危险信号</th>
+          <th class="sortable" onclick="sortCol(this)">代码</th><th class="sortable" onclick="sortCol(this)">名称</th><th class="sortable" onclick="sortCol(this)">最新价</th><th class="sortable" onclick="sortCol(this)">5日线</th><th class="sortable" onclick="sortCol(this)">量比</th><th class="sortable" onclick="sortCol(this)">信号</th><th class="sortable" onclick="sortCol(this)">危险信号</th>
         </tr></thead>
         <tbody id="hkbody"></tbody>
       </table>
@@ -316,7 +323,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>代码</th><th>名称</th><th>最新价</th><th>5日线</th><th>量比</th><th>信号</th>
+          <th class="sortable" onclick="sortCol(this)">代码</th><th class="sortable" onclick="sortCol(this)">名称</th><th class="sortable" onclick="sortCol(this)">最新价</th><th class="sortable" onclick="sortCol(this)">5日线</th><th class="sortable" onclick="sortCol(this)">量比</th><th class="sortable" onclick="sortCol(this)">信号</th>
         </tr></thead>
         <tbody id="pullbody"></tbody>
       </table>
@@ -362,7 +369,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>日期</th><th>D</th><th>K</th><th>净信号</th><th>当日均涨%</th><th>涨/跌家数</th>
+          <th class="sortable" onclick="sortCol(this)">日期</th><th class="sortable" onclick="sortCol(this)">D</th><th class="sortable" onclick="sortCol(this)">K</th><th class="sortable" onclick="sortCol(this)">净信号</th><th class="sortable" onclick="sortCol(this)">当日均涨%</th><th class="sortable" onclick="sortCol(this)">涨/跌家数</th>
         </tr></thead>
         <tbody id="flowtlbody"></tbody>
       </table>
@@ -373,7 +380,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>风格</th><th>D</th><th>K</th><th>净信号</th><th>资金方向</th><th>当日均涨%</th><th>较昨日</th><th>涨/跌</th>
+          <th class="sortable" onclick="sortCol(this)">风格</th><th class="sortable" onclick="sortCol(this)">D</th><th class="sortable" onclick="sortCol(this)">K</th><th class="sortable" onclick="sortCol(this)">净信号</th><th class="sortable" onclick="sortCol(this)">资金方向</th><th class="sortable" onclick="sortCol(this)">当日均涨%</th><th class="sortable" onclick="sortCol(this)">较昨日</th><th class="sortable" onclick="sortCol(this)">涨/跌</th>
         </tr></thead>
         <tbody id="flowstylebody"></tbody>
       </table>
@@ -384,7 +391,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>行业</th><th>D</th><th>K</th><th>净信号</th><th>当日均涨%</th><th>蓝筹动向</th>
+          <th class="sortable" onclick="sortCol(this)">行业</th><th class="sortable" onclick="sortCol(this)">D</th><th class="sortable" onclick="sortCol(this)">K</th><th class="sortable" onclick="sortCol(this)">净信号</th><th class="sortable" onclick="sortCol(this)">当日均涨%</th><th class="sortable" onclick="sortCol(this)">蓝筹动向</th>
         </tr></thead>
         <tbody id="flowindbody"></tbody>
       </table>
@@ -395,7 +402,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>名称</th><th>行业</th><th>当前</th><th>近况轨迹</th><th>信号</th>
+          <th class="sortable" onclick="sortCol(this)">名称</th><th class="sortable" onclick="sortCol(this)">行业</th><th class="sortable" onclick="sortCol(this)">当前</th><th class="sortable" onclick="sortCol(this)">近况轨迹</th><th class="sortable" onclick="sortCol(this)">信号</th>
         </tr></thead>
         <tbody id="flowbluebody"></tbody>
       </table>
@@ -413,26 +420,26 @@
     <h3 class="flow-h">🏭 行业板块主力净流入 / 净流出 <span class="er-stamp" id="er-stamp-0"></span></h3>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
-        <table><thead><tr><th>板块</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">板块</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-ind-in"></tbody></table></div>
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP</div>
-        <table><thead><tr><th>板块</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">板块</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-ind-out"></tbody></table></div>
     </div>
 
     <h3 class="flow-h">💡 概念板块主力净流入 TOP <span class="er-stamp" id="er-stamp-1"></span></h3>
-    <div class="table-wrap">
-      <table><thead><tr><th>概念</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+      <div class="table-wrap">
+      <table><thead><tr><th class="sortable" onclick="sortCol(this)">概念</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-con-in"></tbody></table>
-    </div>
+      </div>
 
     <h3 class="flow-h">🔥 个股主力净流入 / 净流出 TOP <span class="er-stamp" id="er-stamp-2"></span></h3>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP12</div>
-        <table><thead><tr><th>名称</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">名称</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-stk-in"></tbody></table></div>
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP8</div>
-        <table><thead><tr><th>名称</th><th>涨%</th><th>净流出(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">名称</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流出(亿)</th></tr></thead>
         <tbody id="flower-stk-out"></tbody></table></div>
     </div>
 
@@ -440,10 +447,10 @@
     <div class="cards" id="floweretf" style="margin-bottom:8px"></div>
     <div class="grid2">
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP</div>
-        <table><thead><tr><th>ETF</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">ETF</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-etf-in"></tbody></table></div>
       <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP</div>
-        <table><thead><tr><th>ETF</th><th>涨%</th><th>净流入(亿)</th></tr></thead>
+        <table><thead><tr><th class="sortable" onclick="sortCol(this)">ETF</th><th class="sortable" onclick="sortCol(this)">涨%</th><th class="sortable" onclick="sortCol(this)">净流入(亿)</th></tr></thead>
         <tbody id="flower-etf-out"></tbody></table></div>
     </div>
 
@@ -656,13 +663,48 @@ function setF(v,el){ FILTER=v; document.querySelectorAll('.controls button').for
 function esc(s){ return (s==null?'':String(s)); }
 function fmtMetric(m){ if(m==null) return '-'; const cls=m>0?'sK':(m<0?'sD':''); const sign=m>0?'+':''; return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>'; }
 function fmtCap(c){ if(c==null) return '-'; if(c>=10000) return (c/10000).toFixed(2)+'万亿'; return c.toFixed(2)+'亿'; }
+let P0_SORT={key:'cap', asc:false};   // DK记录表排序状态（点表头列切换）
+function p0head(th){
+  const k=th.dataset.sort;
+  if(P0_SORT.key===k) P0_SORT.asc=!P0_SORT.asc;
+  else { P0_SORT.key=k;
+    // 数值列首次点击默认从大到小（大市值/高涨幅在前），文本/日期列默认从小到大
+    P0_SORT.asc = (k==='code'||k==='name'||k==='first_date'||k==='last_date'||k==='timeline'||k==='current');
+  }
+  render();
+}
 function sortRows(rows){
-  const v=document.getElementById('sort').value; const a=[...rows];
-  if(v==='cap_desc') a.sort((x,y)=>(y.cap||0)-(x.cap||0));
-  else if(v==='cap_asc') a.sort((x,y)=>(x.cap||0)-(y.cap||0));
-  else if(v==='rev') a.sort((x,y)=>((y.latest_reversal?1:0)-(x.latest_reversal?1:0))||((y.last_date||'')<(x.last_date||'')?1:-1));
-  else a.sort((x,y)=>x.code<y.code?-1:(x.code>y.code?1:0));
+  const a=[...rows]; const k=P0_SORT.key; const dir=P0_SORT.asc?1:-1;
+  const num = r => {
+    if(k==='cap') return r.cap||0;
+    if(k==='metric') return r.metric==null?-Infinity:r.metric;
+    if(k==='nK') return r.nK||0;
+    if(k==='nD') return r.nD||0;
+    if(k==='trailing') return r.trailing||0;
+    return null;
+  };
+  if(['cap','metric','nK','nD','trailing'].includes(k)){
+    a.sort((x,y)=>(num(x)-num(y))*dir);
+  } else if(k==='code'){
+    a.sort((x,y)=>(x.code<y.code?-1:x.code>y.code?1:0)*dir);
+  } else if(k==='name'){
+    a.sort((x,y)=>(x.name||'').localeCompare(y.name||'','zh')*dir);
+  } else if(k==='current'){
+    const o=s=>s==='K'?2:s==='D'?1:0; a.sort((x,y)=>(o(y.current)-o(x.current))*dir);
+  } else if(k==='first_date'||k==='last_date'){
+    a.sort((x,y)=>((x[k]||'')<(y[k]||'')?-1:(x[k]||'')>(y[k]||'')?1:0)*dir);
+  } else if(k==='rev'){
+    a.sort((x,y)=>((y.latest_reversal?1:0)-(x.latest_reversal?1:0))||((y.last_date||'')<(x.last_date||'')?1:-1));
+  } else if(k==='timeline'){
+    a.sort((x,y)=>((y.timeline?y.timeline.length:0)-(x.timeline?x.timeline.length:0))*dir);
+  }
   return a;
+}
+function updateP0Arrows(){
+  document.querySelectorAll('#panel0 table thead th.sortable').forEach(th=>{
+    th.classList.remove('sorted-asc','sorted-desc');
+    if(th.dataset.sort===P0_SORT.key) th.classList.add(P0_SORT.asc?'sorted-asc':'sorted-desc');
+  });
 }
 function stateBadge(s){ if(s==='K') return '<span class="badge bK">K</span>'; if(s==='D') return '<span class="badge bD">D</span>'; return ''; }
 function tlText(tl){ return tl.map(e=>{ const m=e.date.slice(5); return (e.state==='K'?'<span class=sK>K</span>':'<span class=sD>D</span>')+'<span class=tl>'+m+'</span>'; }).join(' → '); }
@@ -705,6 +747,7 @@ function render(){
       '<td>'+r.nK+'</td><td>'+r.nD+'</td><td>'+rev+'</td><td>'+r.trailing+'</td>'+
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
   }).join('');
+  updateP0Arrows();
   renderObs();
 }
 function card(n,l,cls){ return '<div class="card '+(cls||'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
@@ -721,6 +764,9 @@ function sortObsData(arr){
     if(av==null && bv==null) return 0;
     if(av==null) return 1;
     if(bv==null) return -1;
+    // 文本列（代码/名称/首次D/状态）走 localeCompare，数值列走减法
+    if(typeof av==='string' || typeof bv==='string')
+      return String(av).localeCompare(String(bv),'zh')*asc;
     return (av-bv)*asc;
   });
 }
@@ -728,6 +774,56 @@ function sortObs(key){
   if(OBS_SORT.key===key) OBS_SORT.asc=!OBS_SORT.asc;
   else{ OBS_SORT.key=key; OBS_SORT.asc=true; }
   renderObs();
+}
+
+// ===== 通用表头排序（持仓/回踩/资金流向等所有列表共用）=====
+// 直接对已有 <tr> 做 DOM 级重排，无需改动各渲染函数；能识别 亿/万亿/%/正负号 做数值比较，
+// 其余按文本(localeCompare)比较。空值/占位行(colspan)始终排末尾。
+const _colSortState = new WeakMap();
+function sortCol(th){
+  const table=th.closest('table');
+  const tbody=table&&table.querySelector('tbody');
+  if(!tbody) return;
+  const headers=Array.from(th.parentElement.children);
+  const idx=headers.indexOf(th);
+  const prev=_colSortState.get(tbody);
+  const asc=(prev&&prev.idx===idx)?!prev.asc:true;
+  _colSortState.set(tbody,{idx,asc});
+  headers.forEach((h,i)=>{ h.classList.remove('sorted-asc','sorted-desc'); if(i===idx) h.classList.add(asc?'sorted-asc':'sorted-desc'); });
+  const all=Array.from(tbody.querySelectorAll('tr'));
+  const empties=all.filter(r=>{ const c=r.querySelector('td'); return c && c.getAttribute('colspan'); });
+  const rows=all.filter(r=>{ const c=r.querySelector('td'); return !(c && c.getAttribute('colspan')); });
+  rows.sort((ra,rb)=>cmpCell(ra.children[idx], rb.children[idx], asc));
+  const frag=document.createDocumentFragment();
+  rows.forEach(r=>frag.appendChild(r));
+  empties.forEach(r=>frag.appendChild(r));
+  tbody.appendChild(frag);
+}
+function cellVal(td){
+  if(!td) return {t:'n',v:null};
+  if(td.hasAttribute('data-sv')){ const x=parseFloat(td.getAttribute('data-sv')); return isNaN(x)?{t:'n',v:null}:{t:'num',v:x}; }
+  const s=(td.textContent||'').trim();
+  if(s===''||s==='-'||s==='—'||s==='–') return {t:'n',v:null};
+  const n=parseCellNum(s);
+  if(n!=null) return {t:'num',v:n};
+  return {t:'s',v:s};
+}
+function parseCellNum(s){
+  let m=1, x=s.replace(/%/g,'').replace(/\s/g,'');
+  if(/万亿/.test(x)){ m=1e4; x=x.replace('万亿','亿'); }
+  else if(/万/.test(x) && !/亿/.test(x)){ m=1e-4; x=x.replace('万',''); }
+  x=x.replace(/亿/g,'');
+  if(!/^[+\-]?\d+(\.\d+)?$/.test(x)) return null;
+  const v=parseFloat(x); return isNaN(v)?null:v*m;
+}
+function cmpCell(ta,tb,asc){
+  const A=cellVal(ta), B=cellVal(tb); const d=asc?1:-1;
+  if(A.t==='n'&&B.t==='n') return 0;
+  if(A.t==='n') return 1;          // 空值排末尾
+  if(B.t==='n') return -1;
+  if(A.t==='num'&&B.t==='num') return (A.v-B.v)*d;
+  if(A.t==='s'&&B.t==='s') return A.v.localeCompare(B.v,'zh')*d;
+  return (A.t==='num'?-1:1)*d;     // 数字优先于文本
 }
 function renderObs(){
   const box=document.getElementById('obsbox');
@@ -872,6 +968,8 @@ function renderHoldingChips(){
 async function renderHoldings(){
   const box=document.getElementById('holdbox'); if(!box) return;
   const tb=document.getElementById('hkbody'), cards=document.getElementById('hkcards'), note=document.getElementById('hknote');
+  // 重渲染前清掉上一轮排序箭头
+  box.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
   const hs=loadHoldings();
   if(!hs.length){ box.style.display=''; tb.innerHTML='<tr><td colspan="7" class="empty">还没有添加持仓，在上方输入框填入代码即可（多个用空格/逗号分隔）</td></tr>'; cards.innerHTML=''; note.textContent=''; return; }
   box.style.display='';
@@ -899,6 +997,7 @@ async function renderHoldings(){
 async function renderPullback(){
   const box=document.getElementById('pullback');
   if(!box) return;
+  box.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
   const hs = new Set(loadHoldings());
   const sub=document.getElementById('pullsub'), cards=document.getElementById('pullcards'),
         tb=document.getElementById('pullbody'), note=document.getElementById('pullnote');
@@ -942,6 +1041,8 @@ function renderFlow(){
   const F=SEED.flow;
   if(!F){ box.style.display='none'; return; }
   box.style.display='';
+  // 数据重渲染会重置行顺序，清掉上一轮点表头留下的排序箭头指示，避免误导
+  box.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
   document.getElementById('flowsub').textContent='数据截至：'+(F.updated||'—')+' ｜ 由每日 DK 信号推断资金方向与风格切换';
   document.getElementById('flowconcl').textContent = F.conclusion || '—';
   // 风险信号
