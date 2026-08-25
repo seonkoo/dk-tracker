@@ -77,8 +77,15 @@
   th{color:var(--muted);font-weight:600;background:var(--card)}
   tr:last-child td{border-bottom:none}
   td.wrap{white-space:normal}
-  .table-wrap{border:1px solid var(--line);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);margin-bottom:14px}
+  .table-wrap{border:1px solid var(--line);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);margin-bottom:10px}
   .table-wrap table{border:none;border-radius:0}
+  .pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;
+    padding:10px 4px 14px;font-size:13px;color:var(--muted)}
+  .pager .pg-info{font-variant-numeric:tabular-nums}
+  .pager button{padding:7px 14px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);font-size:13px;font-weight:600}
+  .pager button:disabled{opacity:.4;cursor:not-allowed}
+  .pager button:not(:disabled):active{transform:scale(.97)}
   th.sortable{cursor:pointer;user-select:none}
   th.sortable::after{content:'⇅';margin-left:4px;color:var(--muted);font-size:11px}
   th.sortable.sorted-asc::after{content:'▲';color:var(--accent)}
@@ -232,11 +239,17 @@
   </div>
 
   <div class="controls">
-    <input id="q" placeholder="搜索代码 / 名称…" oninput="render()">
+    <input id="q" placeholder="搜索代码 / 名称…" oninput="P0_PAGE=0;render()">
     <button id="f_all" class="on" onclick="setF('all',this)">全部</button>
     <button id="f_rev" onclick="setF('rev',this)">仅反转</button>
     <button id="f_k" onclick="setF('k',this)">当前K</button>
     <button id="f_d" onclick="setF('d',this)">当前D</button>
+    <select id="psize" onchange="P0_PAGE=0;render()" title="每页条数" style="padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:13px">
+      <option value="50">50/页</option>
+      <option value="100">100/页</option>
+      <option value="200">200/页</option>
+      <option value="0">全部</option>
+    </select>
     <span class="tl" style="align-self:center">点表头列可排序 ↕</span>
   </div>
 
@@ -259,6 +272,7 @@
       <tbody id="tbody"></tbody>
     </table>
   </div>
+  <div class="pager" id="p0pager"></div>
 </div>
 
 <div class="panel" id="panel1">
@@ -659,11 +673,12 @@ function analyze(h){
     stocks_with_reversal:rows.filter(r=>r.reversals.length).length, rows};
 }
 
-function setF(v,el){ FILTER=v; document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); render(); }
+function setF(v,el){ FILTER=v; P0_PAGE=0; document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); render(); }
 function esc(s){ return (s==null?'':String(s)); }
 function fmtMetric(m){ if(m==null) return '-'; const cls=m>0?'sK':(m<0?'sD':''); const sign=m>0?'+':''; return '<span class="'+cls+'">'+sign+(+m).toFixed(2)+'</span>'; }
 function fmtCap(c){ if(c==null) return '-'; if(c>=10000) return (c/10000).toFixed(2)+'万亿'; return c.toFixed(2)+'亿'; }
 let P0_SORT={key:'cap', asc:false};   // DK记录表排序状态（点表头列切换）
+let P0_PAGE=0;                        // DK记录表当前页码（0 起）
 function p0head(th){
   const k=th.dataset.sort;
   if(P0_SORT.key===k) P0_SORT.asc=!P0_SORT.asc;
@@ -671,6 +686,7 @@ function p0head(th){
     // 数值列首次点击默认从大到小（大市值/高涨幅在前），文本/日期列默认从小到大
     P0_SORT.asc = (k==='code'||k==='name'||k==='first_date'||k==='last_date'||k==='timeline'||k==='current');
   }
+  P0_PAGE=0;
   render();
 }
 function sortRows(rows){
@@ -706,6 +722,15 @@ function updateP0Arrows(){
     if(th.dataset.sort===P0_SORT.key) th.classList.add(P0_SORT.asc?'sorted-asc':'sorted-desc');
   });
 }
+function renderP0Pager(total,pages,size){
+  const box=document.getElementById('p0pager'); if(!box) return;
+  if(pages<=1 && size===0){ box.innerHTML='<span class="pg-info">共 '+total+' 条</span>'; return; }
+  const from=size?P0_PAGE*size+1:1, to=size?Math.min((P0_PAGE+1)*size,total):total;
+  box.innerHTML='<button onclick="p0go(-1)"'+(P0_PAGE<=0?' disabled':'')+'>‹ 上一页</button>'+
+    '<span class="pg-info">第 '+(P0_PAGE+1)+' / '+pages+' 页 · 共 '+total+' 条（显示 '+from+'–'+to+'）</span>'+
+    '<button onclick="p0go(1)"'+(P0_PAGE>=pages-1?' disabled':'')+'>下一页 ›</button>';
+}
+function p0go(dir){ P0_PAGE+=dir; render(); }
 function stateBadge(s){ if(s==='K') return '<span class="badge bK">K</span>'; if(s==='D') return '<span class="badge bD">D</span>'; return ''; }
 function tlText(tl){ return tl.map(e=>{ const m=e.date.slice(5); return (e.state==='K'?'<span class=sK>K</span>':'<span class=sD>D</span>')+'<span class=tl>'+m+'</span>'; }).join(' → '); }
 
@@ -734,8 +759,14 @@ function render(){
     if(q && !(r.code.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))) return false;
     return true;
   });
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="12" class="empty">无匹配</td></tr>'; return; }
-  tb.innerHTML=sortRows(rows).map(r=>{
+  const size=+(document.getElementById('psize')||{}).value||0;   // 0 = 全部
+  const total=rows.length;
+  const pages=size?Math.ceil(total/size):1;
+  if(P0_PAGE>pages-1) P0_PAGE=pages-1;
+  if(P0_PAGE<0) P0_PAGE=0;
+  const view=size?rows.slice(P0_PAGE*size,(P0_PAGE+1)*size):rows;
+  if(!total){ tb.innerHTML='<tr><td colspan="12" class="empty">无匹配</td></tr>'; document.getElementById('p0pager').innerHTML=''; return; }
+  tb.innerHTML=sortRows(view).map(r=>{
     const blue = BLUE.has(r.code)? '<span class="badge bBlue">🔵</span>' : '';
     const isBlue = BLUE.has(r.code);
     const isBlueState = isBlue && (r.current==='K'||r.current==='D');
@@ -748,6 +779,7 @@ function render(){
       '<td class="wrap tl">'+tlText(r.timeline)+'</td></tr>';
   }).join('');
   updateP0Arrows();
+  renderP0Pager(total,pages,size);
   renderObs();
 }
 function card(n,l,cls){ return '<div class="card '+(cls||'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
