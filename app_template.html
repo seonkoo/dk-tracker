@@ -56,6 +56,13 @@
   .warnbox .blueAlert2{background:#fef2f2;border-radius:8px;box-shadow:inset 3px 0 0 #dc2626;font-weight:700}
   .bWarn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
   .arrow{color:var(--muted);font-weight:700}
+  /* 资金势头 / 共振 着色（A股习惯：流入红、流出绿） */
+  .tone-strong_in,.tone-in{color:var(--k);font-weight:600}
+  .tone-strong_out,.tone-out{color:var(--d);font-weight:600}
+  .tone-flat{color:var(--muted)}
+  .reso-bull{background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k);font-weight:700}
+  .reso-bear{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d);font-weight:700}
+  .reso-div{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn);font-weight:700}
   .upload{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px}
   .upload h2{font-size:15px;margin:0 0 10px}
   .filepick{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
@@ -210,6 +217,7 @@
   <button class="tab" data-idx="2" onclick="switchTab(2,this)">🎯 持仓·回踩</button>
   <button class="tab" data-idx="3" onclick="switchTab(3,this)">☁ 云端同步</button>
   <button class="tab" data-idx="4" onclick="switchTab(4,this)">💰 资金流向</button>
+  <button class="tab" data-idx="5" onclick="switchTab(5,this)">💹 资金全景</button>
 </div>
 
 <div class="panel on" id="panel0">
@@ -478,6 +486,77 @@
       服务端每日 08:30 / 22:00 推送的板块/个股/ETF 主力净流入数据，与上方「DK 信号面」交叉参考，可互相印证或发现背离。
     </div>
   </div>
+</div>
+
+<div class="panel" id="panel5">
+  <div class="sub" id="mkt-sub">资金全景 · 由个股汇总到行业，再看大市主力资金与势头</div>
+
+  <h3 class="flow-h">🏛 大市主力资金</h3>
+  <div class="cards" id="mkt-cards"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th class="sortable" onclick="sortCol(this)">指数</th>
+        <th class="sortable" onclick="sortCol(this)">涨%</th>
+        <th class="sortable" onclick="sortCol(this)">主力(亿)</th>
+        <th class="sortable" onclick="sortCol(this)">净占比%</th>
+        <th class="sortable" onclick="sortCol(this)">超大单</th>
+        <th class="sortable" onclick="sortCol(this)">大单</th>
+        <th class="sortable" onclick="sortCol(this)">中单</th>
+        <th class="sortable" onclick="sortCol(this)">小单</th>
+        <th class="sortable" onclick="sortCol(this)">5日</th>
+        <th class="sortable" onclick="sortCol(this)">10日</th>
+        <th class="sortable" onclick="sortCol(this)">资金势头</th>
+      </tr></thead>
+      <tbody id="mkt-idx-body"></tbody>
+    </table>
+  </div>
+
+  <div class="warnbox" id="mkt-verdict"></div>
+
+  <h3 class="flow-h">🔥 行业资金势头<span style="font-weight:400;font-size:12px;color:var(--muted)"> （东财行业板块全量口径）</span></h3>
+  <div class="grid2">
+    <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流入 TOP12</div>
+      <table><thead><tr>
+        <th class="sortable" onclick="sortCol(this)">行业</th>
+        <th class="sortable" onclick="sortCol(this)">涨%</th>
+        <th class="sortable" onclick="sortCol(this)">主力(亿)</th>
+        <th class="sortable" onclick="sortCol(this)">5日</th>
+        <th class="sortable" onclick="sortCol(this)">10日</th>
+        <th class="sortable" onclick="sortCol(this)">势头</th>
+      </tr></thead><tbody id="mkt-ind-in"></tbody></table></div>
+    <div class="table-wrap"><div class="sub" style="margin:0 0 4px">净流出 TOP12</div>
+      <table><thead><tr>
+        <th class="sortable" onclick="sortCol(this)">行业</th>
+        <th class="sortable" onclick="sortCol(this)">涨%</th>
+        <th class="sortable" onclick="sortCol(this)">主力(亿)</th>
+        <th class="sortable" onclick="sortCol(this)">5日</th>
+        <th class="sortable" onclick="sortCol(this)">10日</th>
+        <th class="sortable" onclick="sortCol(this)">势头</th>
+      </tr></thead><tbody id="mkt-ind-out"></tbody></table></div>
+  </div>
+
+  <h3 class="flow-h">🔬 个股 → 行业（自下而上聚合）</h3>
+  <div class="sub">把当日 K/D 信号个股按所属行业汇总；「资金」为该行业成分股主力净额合计，与信号方向对照即「共振 / 背离」。</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th class="sortable" onclick="sortCol(this)">行业</th>
+        <th class="sortable" onclick="sortCol(this)">只数</th>
+        <th class="sortable" onclick="sortCol(this)">K</th>
+        <th class="sortable" onclick="sortCol(this)">D</th>
+        <th class="sortable" onclick="sortCol(this)">净信号</th>
+        <th class="sortable" onclick="sortCol(this)">均涨%</th>
+        <th class="sortable" onclick="sortCol(this)">资金(亿)</th>
+        <th class="sortable" onclick="sortCol(this)">5日</th>
+        <th class="sortable" onclick="sortCol(this)">10日</th>
+        <th class="sortable" onclick="sortCol(this)">势头</th>
+        <th class="sortable" onclick="sortCol(this)">共振</th>
+      </tr></thead>
+      <tbody id="mkt-si-body"></tbody>
+    </table>
+  </div>
+  <div class="sub" style="margin:8px 0 0"><a href="javascript:;" onclick="toggleMktSi()" id="mkt-si-toggle" style="color:var(--accent)"></a></div>
 </div>
 
 <div class="note">
@@ -1068,6 +1147,106 @@ async function renderPullback(){
   note.textContent='回踩买点(强过滤)=昨日收盘跌破5日线、今日重新站回线上且盘中最低触及5日线（洗盘结束转强）；放量破线卖=收盘<5日线且当日量>5日均量×'+PB_VOL_MULT+'（硬卖出信号）。🟡危险信号（仅近20日高位出现时提示，作减仓参考）：高位放量滞涨=放量大但价不涨；十字星=开盘≈收盘多空犹豫；上长影线=冲高被砸回。绿色=关注买点，红色=风险卖点，黄色=提高警惕。K线随每次上传预拉，持仓等自选仍尝试实时行情。仅供监测，非买卖建议。';
 }
 
+/* ============ 资金全景：个股 → 行业 → 大市主力资金 ============ */
+let MKT_SI_LIMIT = 25;   // 个股→行业表默认显示行数（0 = 全部）
+function fmtYi(v, nd){
+  if(v==null) return '<span class="tl">—</span>';
+  const cls=v>0?'sK':(v<0?'sD':'');
+  return '<span class="'+cls+'">'+(v>0?'+':'')+v.toFixed(nd==null?2:nd)+'</span>';
+}
+function toneSpan(txt, tone){ return '<span class="'+('tone-'+(tone||'flat'))+'">'+esc(txt||'—')+'</span>'; }
+function resoBadge(r){
+  if(!r) return '<span class="tl">—</span>';
+  let cls='';
+  if(r==='共振看多') cls='reso-bull';
+  else if(r==='共振看空') cls='reso-bear';
+  else if(r.indexOf('背离')===0) cls='reso-div';
+  return '<span class="badge '+cls+'">'+esc(r)+'</span>';
+}
+function yiCard(v, label){
+  if(v==null) return card('—', label);
+  return card((v>0?'+':'')+v.toFixed(0)+'亿', label, v>0?'k':(v<0?'d':''));
+}
+function mktRowIdx(i){
+  return '<tr><td><b>'+esc(i.label||i.name||'')+'</b></td><td>'+fmtPctNum(i.chg)+'</td>'
+    +'<td>'+fmtYi(i.main,1)+'</td><td>'+fmtYi(i.ratio,2)+'</td>'
+    +'<td>'+fmtYi(i.super,1)+'</td><td>'+fmtYi(i.big,1)+'</td>'
+    +'<td>'+fmtYi(i.mid,1)+'</td><td>'+fmtYi(i.small,1)+'</td>'
+    +'<td>'+fmtYi(i.d5,1)+'</td><td>'+fmtYi(i.d10,1)+'</td>'
+    +'<td>'+toneSpan(i.mom, i.tone)+'</td></tr>';
+}
+function fmtPctNum(v){ if(v==null) return '<span class="tl">—</span>'; const cls=v>0?'sK':(v<0?'sD':''); return '<span class="'+cls+'">'+(v>0?'+':'')+(+v).toFixed(2)+'</span>'; }
+function mktRowInd(i){
+  return '<tr><td>'+esc(i.name||'')+'</td><td>'+fmtPctNum(i.chg)+'</td>'
+    +'<td>'+fmtYi(i.main,2)+'</td><td>'+fmtYi(i.d5,1)+'</td><td>'+fmtYi(i.d10,1)+'</td>'
+    +'<td>'+toneSpan(i.mom, i.tone)+'</td></tr>';
+}
+function mktRowSi(a){
+  return '<tr><td>'+esc(a.industry||'')+'</td><td>'+a.n+'</td><td>'+a.nK+'</td><td>'+a.nD+'</td>'
+    +'<td>'+(a.net_signal>0?'<span class="sK">+'+a.net_signal+'</span>':(a.net_signal<0?'<span class="sD">'+a.net_signal+'</span>':'0'))+'</td>'
+    +'<td>'+fmtPctNum(a.avg_chg)+'</td><td>'+fmtYi(a.net,2)+'</td>'
+    +'<td>'+fmtYi(a.d5,1)+'</td><td>'+fmtYi(a.d10,1)+'</td>'
+    +'<td>'+toneSpan(a.mom, a.tone)+'</td><td>'+resoBadge(a.reso)+'</td></tr>';
+}
+function toggleMktSi(){ MKT_SI_LIMIT = (MKT_SI_LIMIT===0?25:0); renderMarket(); }
+function renderMarket(){
+  const M = SEED.market;
+  const tbIdx=document.getElementById('mkt-idx-body'),
+        tbIn =document.getElementById('mkt-ind-in'),
+        tbOut=document.getElementById('mkt-ind-out'),
+        tbSi =document.getElementById('mkt-si-body');
+  if(!M || !M.available){
+    document.getElementById('mkt-sub').textContent='资金全景暂不可用（数据未生成或实时源不可达）';
+    if(tbIdx) tbIdx.innerHTML='<tr><td colspan="11" class="empty">暂无数据</td></tr>';
+    if(tbIn) tbIn.innerHTML=''; if(tbOut) tbOut.innerHTML='';
+    if(tbSi) tbSi.innerHTML='';
+    return;
+  }
+  document.getElementById('mkt-sub').textContent='资金全景 · 数据时间 '+(M.updated||'—')+' ｜ 来源 '+(M.source||'东财实时');
+  // 1) 大市卡片（沪深两市合计）
+  const s = M.summary||{};
+  document.getElementById('mkt-cards').innerHTML =
+      yiCard(s.main,'沪深主力净额') + yiCard(s.super,'超大单')
+    + yiCard(s.big,'大单')          + yiCard(s.small,'小单(散户)');
+  // 2) 指数明细
+  const idx = M.indices||[];
+  if(!idx.length){ tbIdx.innerHTML='<tr><td colspan="11" class="empty">暂无数据</td></tr>'; }
+  else{
+    tbIdx.innerHTML = idx.map(mktRowIdx).join('')
+      + '<tr><td colspan="1"><b>沪深合计</b></td><td class="tl">—</td>'
+      + '<td>'+fmtYi(s.main,1)+'</td><td class="tl">—</td>'
+      + '<td>'+fmtYi(s.super,1)+'</td><td>'+fmtYi(s.big,1)+'</td>'
+      + '<td>'+fmtYi(s.mid,1)+'</td><td>'+fmtYi(s.small,1)+'</td>'
+      + '<td>'+fmtYi(s.d5,1)+'</td><td>'+fmtYi(s.d10,1)+'</td>'
+      + '<td>'+toneSpan(s.mom, s.tone)+'</td></tr>';
+  }
+  // 3) 研判
+  const v = M.verdict||{};
+  document.getElementById('mkt-verdict').innerHTML =
+      '<h2>🧭 大市研判</h2>'
+    + '<div style="font-size:14px;line-height:1.7">'+esc(v.text||'—')+'</div>'
+    + '<div class="sub" style="margin:8px 0 0">资金×信号共振：<span class="badge reso-bull">看多 '+v.reso_bull+'</span> '
+    + '<span class="badge reso-bear">看空 '+v.reso_bear+'</span>　行业净流入宽度 '+v.breadth+'%（'+v.in_n+'/'+v.tot+'）</div>';
+  // 4) 行业板块 流入/流出 TOP12
+  const ind = M.industries||[];
+  if(!ind.length){
+    tbIn.innerHTML='<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    tbOut.innerHTML='<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+  }else{
+    tbIn.innerHTML  = ind.slice(0,12).map(mktRowInd).join('');
+    tbOut.innerHTML = ind.slice(-12).reverse().map(mktRowInd).join('');
+  }
+  // 5) 个股 → 行业
+  const si = M.stock_industry||[];
+  if(!si.length){ tbSi.innerHTML='<tr><td colspan="11" class="empty">暂无数据</td></tr>'; }
+  else{
+    const view = MKT_SI_LIMIT? si.slice(0, MKT_SI_LIMIT) : si;
+    tbSi.innerHTML = view.map(mktRowSi).join('');
+    const tg=document.getElementById('mkt-si-toggle');
+    if(tg) tg.textContent = MKT_SI_LIMIT ? ('显示全部 '+si.length+' 个行业 ▾') : ('收起，仅看前 25 个 ▴');
+  }
+}
+
 function renderFlow(){
   const box=document.getElementById('flowbox');
   const F=SEED.flow;
@@ -1359,6 +1538,7 @@ function switchTab(idx,el){
   el.classList.add('on');
   document.getElementById('panel'+idx).classList.add('on');
   if(idx===4){ renderFlow(); refreshER(true); }
+  if(idx===5){ renderMarket(); }
   try{ localStorage.setItem('dk_tab_idx', String(idx)); }catch(e){}
   // 移动端 tab 横向滚动条：把当前 tab 居中，让"下划线"始终可见
   try{
@@ -1370,7 +1550,7 @@ function switchTab(idx,el){
   }catch(e){}
 }
 function restoreTab(){
-  let idx=0; try{ idx=Math.max(0,Math.min(4,parseInt(localStorage.getItem('dk_tab_idx')||'0',10))); }catch(e){}
+  let idx=0; try{ idx=Math.max(0,Math.min(5,parseInt(localStorage.getItem('dk_tab_idx')||'0',10))); }catch(e){}
   const btns=document.querySelectorAll('.tab');
   if(btns[idx]) switchTab(idx,btns[idx]);
 }

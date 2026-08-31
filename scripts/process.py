@@ -566,7 +566,7 @@ def _em_secid(code, market=None):
     return ("0." + code) if lead in "0168" else ("1." + code)
 
 
-def _ulist_batch(secids, fields="f12,f14,f62,f3", timeout=20):
+def _ulist_batch(secids, fields="f12,f14,f62,f3,f100,f164,f165,f267,f268", timeout=20):
     url = ("https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=%s&fields=%s"
            % (secids, fields))
     req = urllib.request.Request(url, headers=EM_HEADERS)
@@ -595,7 +595,9 @@ def fetch_em_flow(stock_codes, names, timeout=30):
                 f14 = x.get("f14")
                 if f12 and f14 and f14 != "_":
                     got[f12] = {"name": f14, "net": round((x.get("f62") or 0) / 1e8, 2),
-                                "chg": x.get("f3")}
+                                "chg": x.get("f3"), "ind": x.get("f100"),
+                                "d5": round((x.get("f164") or 0) / 1e8, 2),
+                                "d10": round((x.get("f267") or 0) / 1e8, 2)}
         except Exception as e:
             print("  [东财实时] 批次 %d-%d 拉取失败: %s" % (i, i + len(batch), e))
     # 行业板块
@@ -626,6 +628,14 @@ def fetch_em_flow(stock_codes, names, timeout=30):
             stk.append({"name": names.get(c, c), "code": c, "chg": v["chg"], "net": v["net"]})
     stk_in = sorted(stk, key=lambda z: -z["net"])[:12]
     stk_out = sorted(stk, key=lambda z: z["net"])[:8]
+    # 个股原始映射（含所属行业 f100），供「个股→行业」聚合复用，避免重复请求
+    raw_stocks = {}
+    for c in stock_codes:
+        if c in got:
+            v = got[c]
+            raw_stocks[c] = {"name": names.get(c, v["name"]), "chg": v["chg"],
+                             "net": v["net"], "ind": v.get("ind"),
+                             "d5": v.get("d5"), "d10": v.get("d10")}
     return {
         "available": True,
         "updated": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -633,7 +643,290 @@ def fetch_em_flow(stock_codes, names, timeout=30):
         "industry_in": ind_in, "industry_out": ind_out,
         "etf": {"byGroup": byGroup, "topIn": etf_in, "topOut": etf_out},
         "stocks_in": stk_in, "stocks_out": stk_out,
+        "raw_stocks": raw_stocks,
     }
+
+
+# ============================================================
+#  资金全景：个股 → 行业 → 大市主力资金
+#  - 大市：上证/深证/创业板 主力·超大单·大单·中单·小单 + 5日/10日势头
+#  - 行业：东财行业板块同口径 + 势头判定
+#  - 个股→行业：按 f100 二级行业聚合当日 K/D 信号与个股主力净额
+#  - 共振：个股聚合行业 × 行业级资金 同向(共振)/反向(背离)
+# ============================================================
+EM_INDEX_POOL = [
+    ("000001", 1, "上证指数"),
+    ("399001", 0, "深证成指"),
+    ("399006", 0, "创业板指"),
+]
+EM_FLOW_FIELDS = "f12,f14,f3,f62,f184,f66,f72,f78,f84,f164,f165,f267,f268"
+
+
+def _yi(v, nd=2):
+    """元 → 亿元（None 安全）。"""
+    if v is None:
+        return None
+    try:
+        return round(float(v) / 1e8, nd)
+    except Exception:
+        return None
+
+
+def momentum_label(t, d5, d10=None):
+    """资金势头判定 → (label, tone)。tone: strong_in/in/flat/out/strong_out
+    依据：今日主力净额 vs 5日均值 的方向与加速度。"""
+    try:
+        t = float(t or 0)
+    except Exception:
+        t = 0.0
+    a5 = None if d5 is None else float(d5) / 5.0
+    if a5 is None:
+        base = "流入" if t > 0 else ("流出" if t < 0 else "持平")
+        acc = ""
+    elif t > 0 and a5 > 0:
+        base = "持续流入"
+        acc = "加速" if t > a5 * 1.3 else ("放缓" if t < a5 * 0.7 else "平稳")
+    elif t > 0 and a5 <= 0:
+        base, acc = "资金回流", "转多"
+    elif t < 0 and a5 < 0:
+        base = "持续流出"
+        acc = "加速" if t < a5 * 1.3 else ("放缓" if t > a5 * 0.7 else "平稳")
+    elif t < 0 and a5 >= 0:
+        base, acc = "高位流出", "转空"
+    else:
+        base, acc = "窄幅波动", ""
+    label = base + (("·" + acc) if acc else "")
+    if t > 0 and (a5 or 0) > 0:
+        tone = "strong_in"
+    elif t > 0:
+        tone = "in"
+    elif t < 0 and (a5 or 0) < 0:
+        tone = "strong_out"
+    elif t < 0:
+        tone = "out"
+    else:
+        tone = "flat"
+    return label, tone
+
+
+def fetch_industry_boards(pages=5, page_size=100, timeout=25):
+    """拉取东财全部行业板块资金流（clist, fs=m:90+t:2），按主力净额降序。
+    板块名与个股 f100 二级行业口径一致，可直接对照。"""
+    import urllib.request
+    out = []
+    seen = set()
+    for pn in range(1, pages + 1):
+        url = ("https://push2delay.eastmoney.com/api/qt/clist/get?pn=%d&pz=%d&po=1&np=1"
+               "&fltt=2&invt=2&fid=f62&fs=m:90+t:2&fields=%s"
+               % (pn, page_size, EM_FLOW_FIELDS))
+        try:
+            req = urllib.request.Request(url, headers=EM_HEADERS)
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                d = json.loads(r.read().decode("utf-8", "ignore"))
+            diff = ((d.get("data") or {}).get("diff")) or []
+            for x in diff:
+                code = x.get("f12")
+                if not code or code in seen:
+                    continue
+                seen.add(code)
+                main = _yi(x.get("f62"))
+                if main is None:
+                    continue
+                d5, d10 = _yi(x.get("f164")), _yi(x.get("f267"))
+                lab, tone = momentum_label(main, d5, d10)
+                out.append({"code": code, "name": x.get("f14"), "chg": x.get("f3"),
+                            "main": main, "ratio": x.get("f184"),
+                            "super": _yi(x.get("f66")), "big": _yi(x.get("f72")),
+                            "mid": _yi(x.get("f78")), "small": _yi(x.get("f84")),
+                            "d5": d5, "d5r": x.get("f165"),
+                            "d10": d10, "d10r": x.get("f268"),
+                            "mom": lab, "tone": tone})
+            if len(diff) < page_size:
+                break
+        except Exception as e:
+            print("  [行业板块] 第%d页拉取失败: %s" % (pn, e))
+            break
+    out.sort(key=lambda z: -(z["main"] or 0))
+    return out
+
+
+def fetch_market_panorama(raw_stocks, records=None, obs=None, timeout=25):
+    """构建「个股→行业→大市」资金全景。raw_stocks 来自 fetch_em_flow。"""
+    import datetime
+    out = {"available": False, "updated": None, "source": "东财实时(ulist)",
+           "indices": [], "summary": None, "industries": [],
+           "stock_industry": [], "verdict": None}
+    try:
+        # ---- 1) 大市指数（一次批量）
+        secids = ",".join(["%d.%s" % (mkt, c) for c, mkt, _ in EM_INDEX_POOL])
+        got = {}
+        try:
+            for x in _ulist_batch(secids, fields=EM_FLOW_FIELDS, timeout=timeout):
+                f12 = x.get("f12")
+                if f12 and x.get("f14") not in (None, "_"):
+                    got[f12] = x
+        except Exception as e:
+            print("  [资金全景] 大市指数拉取失败: %s" % e)
+
+        def row_of(x):
+            main = _yi(x.get("f62"))
+            d5 = _yi(x.get("f164"))
+            d10 = _yi(x.get("f267"))
+            label, tone = momentum_label(main, d5, d10)
+            return {"name": x.get("f14"), "chg": x.get("f3"),
+                    "main": main, "ratio": x.get("f184"),
+                    "super": _yi(x.get("f66")), "big": _yi(x.get("f72")),
+                    "mid": _yi(x.get("f78")), "small": _yi(x.get("f84")),
+                    "d5": d5, "d5r": x.get("f165"),
+                    "d10": d10, "d10r": x.get("f268"),
+                    "mom": label, "tone": tone}
+
+        indices = []
+        for code, mkt, disp in EM_INDEX_POOL:
+            if code in got:
+                r = row_of(got[code])
+                r["code"] = code
+                r["label"] = disp
+                indices.append(r)
+
+        # 行业板块资金：东财全量行业板块口径（分页拉取，按主力净额降序）
+        industries = fetch_industry_boards(timeout=timeout)
+
+        # ---- 2) 沪深两市合计（上证 + 深证）
+        summary = None
+        if indices:
+            def sget(key):
+                vals = [i[key] for i in indices if i.get(key) is not None]
+                return round(sum(vals), 2) if vals else None
+            ss, mm = sget("main"), sget("mid")
+            sm, bb = sget("small"), sget("big")
+            sup = sget("super")
+            d5, d10 = sget("d5"), sget("d10")
+            lab, tone = momentum_label(ss, d5, d10)
+            summary = {"main": ss, "super": sup, "big": bb, "mid": mm, "small": sm,
+                       "d5": d5, "d10": d10, "mom": lab, "tone": tone}
+
+        # ---- 3) 个股 → 行业聚合（当日 K/D 信号 + 个股主力净额）
+        days = (records or {}).get("days", []) or []
+        today = days[-1] if days else {}
+        kset = set(today.get("k", []) or [])
+        dset = set(today.get("d", []) or [])
+        agg = {}
+        for code, v in (raw_stocks or {}).items():
+            ind = v.get("ind")
+            if not ind:
+                continue
+            a = agg.setdefault(ind, {"industry": ind, "n": 0, "nK": 0, "nD": 0,
+                                     "chg_sum": 0.0, "chg_n": 0, "net": 0.0,
+                                     "d5": 0.0, "d10": 0.0})
+            a["n"] += 1
+            if code in kset:
+                a["nK"] += 1
+            if code in dset:
+                a["nD"] += 1
+            if isinstance(v.get("chg"), (int, float)):
+                a["chg_sum"] += float(v["chg"])
+                a["chg_n"] += 1
+            if isinstance(v.get("net"), (int, float)):
+                a["net"] += float(v["net"])
+            if isinstance(v.get("d5"), (int, float)):
+                a["d5"] += float(v["d5"])
+            if isinstance(v.get("d10"), (int, float)):
+                a["d10"] += float(v["d10"])
+        stock_industry = []
+        for a in agg.values():
+            a["net"] = round(a["net"], 2)
+            a["d5"] = round(a["d5"], 2)
+            a["d10"] = round(a["d10"], 2)
+            a["net_signal"] = a["nK"] - a["nD"]          # >0 卖出占优
+            a["avg_chg"] = round(a["chg_sum"] / a["chg_n"], 2) if a["chg_n"] else None
+            a.pop("chg_sum", None)
+            a.pop("chg_n", None)
+            # 势头：由个股汇总的 今日 / 5日 / 10日 主力净额推算
+            lab, tone = momentum_label(a["net"], a["d5"], a["d10"])
+            a["mom"], a["tone"] = lab, tone
+            stock_industry.append(a)
+        stock_industry.sort(key=lambda z: -abs(z["net"] or 0))
+
+        # ---- 4) 共振：个股聚合资金（自下而上）× 该行业 K/D 信号方向
+        for a in stock_industry:
+            bull_sig = a["net_signal"] < 0               # D 多 = 买入占优
+            bull_money = (a["net"] or 0) > 0
+            if bull_sig and bull_money:
+                a["reso"] = "共振看多"
+            elif (not bull_sig) and (not bull_money):
+                a["reso"] = "共振看空"
+            elif bull_sig and not bull_money:
+                a["reso"] = "背离·信号多资金出"
+            else:
+                a["reso"] = "背离·资金进信号弱"
+
+        # ---- 5) 大市研判
+        verdict = build_market_verdict(summary, industries, stock_industry,
+                                       kset, dset, obs)
+
+        out.update({"available": True,
+                    "updated": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                    "indices": indices, "summary": summary,
+                    "industries": industries, "stock_industry": stock_industry,
+                    "verdict": verdict})
+        n_ind = len(industries)
+        print("  [资金全景] 指数%d 行业%d 个股行业聚合%d 共振已计算"
+              % (len(indices), n_ind, len(stock_industry)))
+    except Exception as e:
+        print("  [资金全景] 构建失败: %s" % e)
+    return out
+
+
+def build_market_verdict(summary, industries, stock_industry, kset, dset, obs):
+    """综合「大市主力资金 + 行业宽度 + 信号面 + 观察池实况」给出研判。"""
+    main = (summary or {}).get("main") or 0
+    # 方向与强度
+    if main > 100:
+        direction, strength = "大幅净流入", "强"
+    elif main > 20:
+        direction, strength = "净流入", "偏强"
+    elif main > -20:
+        direction, strength = "基本平衡", "中性"
+    elif main > -100:
+        direction, strength = "净流出", "偏弱"
+    else:
+        direction, strength = "大幅净流出", "弱"
+    # 行业宽度
+    tot = len(industries) or 1
+    in_n = sum(1 for i in industries if (i.get("main") or 0) > 0)
+    breadth = round(in_n * 100.0 / tot, 1)
+    # 信号面
+    nk, nd = len(kset), len(dset)
+    sig = "买入占优" if nd > nk else ("卖出占优" if nk > nd else "多空均衡")
+    # 观察池实况
+    sm = (obs or {}).get("summary") or {}
+    win = sm.get("win_rate")
+    avg = sm.get("avg_ret")
+    # 共振统计
+    reso_bull = sum(1 for a in stock_industry if a.get("reso") == "共振看多")
+    reso_bear = sum(1 for a in stock_industry if a.get("reso") == "共振看空")
+
+    # 结论（严格以价格动作为准，不臆造）
+    parts = []
+    parts.append("沪深两市主力资金%s（%+.0f亿，强度%s）" % (direction, main, strength))
+    parts.append("行业净流入宽度 %.0f%%（%d/%d）" % (breadth, in_n, tot))
+    parts.append("今日信号 K=%d D=%d，%s" % (nk, nd, sig))
+    if win is not None:
+        parts.append("观察池胜率 %.1f%%、均收益 %+.2f%%" % (win, avg or 0))
+    # 情绪判定：以观察池价格动作为准
+    if avg is not None and avg < 0 and (win or 0) < 50:
+        mood = "仍在退潮"
+    elif avg is not None and avg > 0 and (win or 0) >= 50:
+        mood = "情绪已修复"
+    else:
+        mood = "尚未修复，局部企稳"
+    text = "；".join(parts) + "。综合研判：" + mood + "。"
+    return {"direction": direction, "strength": strength, "main": round(main, 2),
+            "breadth": breadth, "in_n": in_n, "tot": tot,
+            "nk": nk, "nd": nd, "sig": sig,
+            "reso_bull": reso_bull, "reso_bear": reso_bear,
+            "win_rate": win, "avg_ret": avg, "mood": mood, "text": text}
 
 
 def build_realtime_er(stocks, config):
@@ -1472,6 +1765,8 @@ def generate_app(records, stocks, obs, config):
     flow = build_flow(records, stocks, config)
     er = build_realtime_er(stocks, config)
     flow["ai_summary"] = fetch_ai_summary(flow, er, config, obs)
+    # 资金全景：个股→行业→大市主力资金（复用上面已拉取的个股实时数据，仅多 1 次批量请求）
+    market = fetch_market_panorama(er.get("raw_stocks") or {}, records, obs)
     seed = {
         "updated": records.get("updated"),
         "days": records.get("days", []),
@@ -1481,6 +1776,7 @@ def generate_app(records, stocks, obs, config):
         "klines": klines,
         "flow": flow,
         "er": er if er else {"available": False},
+        "market": market,
         "em_pool": {"industry": EM_INDUSTRY_POOL,
                     "etf": [list(x) for x in EM_ETF_POOL]},
     }
