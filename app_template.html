@@ -42,6 +42,16 @@
   .witem{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 0;
     border-top:1px dashed var(--line);font-size:14px}
   .witem:first-of-type{border-top:none}
+  /* 最新日期的反转：同一日期、信息重复，压缩行高以提升手机端可读性 */
+  .witem.compact{padding:3px 0;font-size:13px;gap:6px}
+  .witem.compact .tl{font-size:11px}
+  /* 反转预警：汇总行 + 展开/收起（手机端加大点击区） */
+  .wsum{font-size:12px;color:var(--muted);padding:2px 0 8px;border-bottom:1px dashed var(--line);margin-bottom:2px}
+  .wsum b{color:var(--fg)}
+  .wmore{margin-top:10px;padding:11px 12px;border-radius:10px;border:1px dashed var(--line);
+    color:var(--accent);font-size:13px;font-weight:700;text-align:center;cursor:pointer;
+    background:var(--card)}
+  .wmore:active{transform:scale(.98);opacity:.8}
   .badge{font-size:11px;padding:1px 7px;border-radius:999px;font-weight:700}
   .bK{background:color-mix(in srgb,var(--k) 18%,transparent);color:var(--k)}
   .bD{background:color-mix(in srgb,var(--d) 18%,transparent);color:var(--d)}
@@ -758,6 +768,8 @@ function fmtMetric(m){ if(m==null) return '-'; const cls=m>0?'sK':(m<0?'sD':'');
 function fmtCap(c){ if(c==null) return '-'; if(c>=10000) return (c/10000).toFixed(2)+'万亿'; return c.toFixed(2)+'亿'; }
 let P0_SORT={key:'cap', asc:false};   // DK记录表排序状态（点表头列切换）
 let P0_PAGE=0;                        // DK记录表当前页码（0 起）
+let W_REST=[];                        // 反转预警：被折叠的「非最新、非蓝筹」历史反转
+let W_SHOW_REST=false;                // 反转预警：是否已展开历史反转
 function p0head(th){
   const k=th.dataset.sort;
   if(P0_SORT.key===k) P0_SORT.asc=!P0_SORT.asc;
@@ -812,6 +824,33 @@ function renderP0Pager(total,pages,size){
 function p0go(dir){ P0_PAGE+=dir; render(); }
 function stateBadge(s){ if(s==='K') return '<span class="badge bK">K</span>'; if(s==='D') return '<span class="badge bD">D</span>'; return ''; }
 function tlText(tl){ return tl.map(e=>{ const m=e.date.slice(5); return (e.state==='K'?'<span class=sK>K</span>':'<span class=sD>D</span>')+'<span class=tl>'+m+'</span>'; }).join(' → '); }
+/* 反转预警条目：最新日期的反转省略重复日期，其余显示日期 */
+function warnItem(x){
+  const r=x.r, lr=r.latest_reversal;
+  const blueTag  = x.isBlue? '<span class="badge bBlue">🔵蓝筹</span> ' : '';
+  const blueWarn = x.isBlue? '🚨 ' : '';
+  const blueCls  = x.isBlue? ' blueAlert2' : '';
+  const dateHtml = x.isNew? '' : ('<span class="tl">'+esc(lr.from_date)+' → '+esc(lr.to_date)+'</span>');
+  // 最新日期的反转条目：压缩行高（同一日期，信息重复）
+  const cls = 'witem'+blueCls+(x.isNew?' compact':'');
+  return '<div class="'+cls+'">'+blueWarn+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '
+    +blueTag+'<b>'+esc(r.code)+'</b> '+esc(r.name)+' '+dateHtml
+    +'<span class="tl">（累计反转 '+r.n_reversals+' 次）</span></div>';
+}
+function warnRestBlock(){
+  return '<div id="w-rest-toggle" class="wmore" onclick="toggleWRest()">'
+    +(W_SHOW_REST? '收起历史反转 ▴' : ('显示其余 '+W_REST.length+' 条历史反转 ▾'))
+    +'</div>'
+    +'<div id="w-rest"'+(W_SHOW_REST?'':' style="display:none"')+'>'
+    +W_REST.map(x=>warnItem(x)).join('')+'</div>';
+}
+function toggleWRest(){
+  W_SHOW_REST=!W_SHOW_REST;
+  const box=document.getElementById('w-rest'), btn=document.getElementById('w-rest-toggle');
+  if(box) box.style.display = W_SHOW_REST? '' : 'none';
+  if(btn) btn.textContent = W_SHOW_REST? '收起历史反转 ▴' : ('显示其余 '+W_REST.length+' 条历史反转 ▾');
+  if(!W_SHOW_REST && btn && btn.scrollIntoView) btn.scrollIntoView({block:'nearest'});
+}
 
 function render(){
   const h=loadHistory();
@@ -821,14 +860,27 @@ function render(){
   c.innerHTML = card(DATA.total_stocks,'跟踪个股')+card(DATA.today_k.length,'今日 K','k')+card(DATA.today_d.length,'今日 D','d')+card(DATA.stocks_with_reversal,'反转个股');
   const warns=DATA.rows.filter(r=>r.latest_reversal);
   const w=document.getElementById('warns');
-  if(!warns.length){ w.innerHTML='<div class="empty">暂无反转记录</div>'; }
-  else{ w.innerHTML=warns.map(r=>{ const lr=r.latest_reversal; const dir=(lr.from==='K'?'K→D':'D→K');
-    const blueTag = BLUE.has(r.code)? '<span class="badge bBlue">🔵蓝筹</span> ' : '';
-    const blueWarn = BLUE.has(r.code)? '🚨 ' : '';
-    const blueCls = BLUE.has(r.code)? ' blueAlert2' : '';
-    return '<div class="witem'+blueCls+'">'+blueWarn+stateBadge(lr.from)+'<span class="arrow">→</span>'+stateBadge(lr.to)+' '+
-      blueTag+'<b>'+esc(r.code)+'</b> '+esc(r.name)+' <span class="tl">'+lr.from_date+' → '+lr.to_date+'</span>'+
-      '<span class="tl">（累计反转 '+r.n_reversals+' 次）</span></div>'; }).join(''); }
+  if(!warns.length){ w.innerHTML='<div class="empty">暂无反转记录</div>'; W_REST=[]; }
+  else{
+    // 可读性优先（手机端）：默认只展示「最新日期反转」+「蓝筹反转」，其余折叠，点击展开
+    const latestDate = DATA.today
+      || warns.reduce((m,r)=>(r.latest_reversal.to_date>m?r.latest_reversal.to_date:m), '');
+    W_REST=[];
+    const pinned=[];
+    warns.forEach(r=>{
+      const isNew  = (r.latest_reversal.to_date===latestDate);
+      const isBlue = BLUE.has(r.code);
+      (isNew||isBlue ? pinned : W_REST).push({r:r, isNew:isNew, isBlue:isBlue});
+    });
+    const nNew=pinned.filter(x=>x.isNew).length;
+    const nBlueOld=pinned.filter(x=>x.isBlue&&!x.isNew).length;
+    let html='<div class="wsum">最新日期（'+esc(latestDate)+'）反转 <b>'+nNew+'</b> 条'
+      +(nBlueOld?(' · 蓝筹历史反转 <b>'+nBlueOld+'</b> 条'):'')
+      +(W_REST.length?(' · 其余 <b>'+W_REST.length+'</b> 条已折叠'):'')+'</div>';
+    html+=pinned.map(x=>warnItem(x)).join('');
+    html+=W_REST.length? warnRestBlock() : '';
+    w.innerHTML=html;
+  }
   const q=document.getElementById('q').value.trim().toLowerCase();
   const tb=document.getElementById('tbody');
   const rows=DATA.rows.filter(r=>{
