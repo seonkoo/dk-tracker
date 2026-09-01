@@ -957,6 +957,24 @@
       "net_inflow": -0.10084077
     },
     {
+      "code": "600028",
+      "name": "中国石化",
+      "entry_date": "2026-08-19",
+      "entry_close": 5.16,
+      "ret": 0.06976744186046502,
+      "bench_ret": 0.01585927798550224,
+      "day_chg": 0.01098901098901095,
+      "excess": 0.05390816387496278,
+      "holding_days": 13,
+      "exited": false,
+      "exit_reason": "满30天",
+      "status": "活跃",
+      "is_blue": true,
+      "updated": "2026-09-01",
+      "mktcap": 6675.09,
+      "net_inflow": -0.11638014
+    },
+    {
       "code": "300429",
       "name": "强力新材",
       "entry_date": "2026-08-25",
@@ -1009,6 +1027,24 @@
       "updated": "2026-09-01",
       "mktcap": 405.15,
       "net_inflow": 0.17516589
+    },
+    {
+      "code": "601288",
+      "name": "农业银行",
+      "entry_date": "2026-08-18",
+      "entry_close": 6.6,
+      "ret": 0.06818181818181812,
+      "bench_ret": -0.025971299712997054,
+      "day_chg": 0.01878612716762995,
+      "excess": 0.09415311789481517,
+      "holding_days": 14,
+      "exited": false,
+      "exit_reason": "满30天",
+      "status": "活跃",
+      "is_blue": true,
+      "updated": "2026-09-01",
+      "mktcap": 24673.8,
+      "net_inflow": 3.84062
     },
     {
       "code": "688536",
@@ -1335,24 +1371,6 @@
       "net_inflow": 0.21462369
     },
     {
-      "code": "600028",
-      "name": "中国石化",
-      "entry_date": "2026-08-19",
-      "entry_close": 5.16,
-      "ret": 0.05813953488372081,
-      "bench_ret": 0.01585927798550224,
-      "day_chg": 0.0,
-      "excess": 0.04228025689821857,
-      "holding_days": 13,
-      "exited": false,
-      "exit_reason": "满30天",
-      "status": "活跃",
-      "is_blue": true,
-      "updated": "2026-09-01",
-      "mktcap": 6675.09,
-      "net_inflow": -0.11638014
-    },
-    {
       "code": "002277",
       "name": "友阿股份",
       "entry_date": "2026-08-21",
@@ -1637,7 +1655,7 @@
       "status": "活跃",
       "is_blue": false,
       "updated": "2026-09-01",
-      "mktcap": 61.77,
+      "mktcap": 61.78,
       "net_inflow": -0.07477696
     },
     {
@@ -1693,24 +1711,6 @@
       "updated": "2026-09-01",
       "mktcap": 150.05,
       "net_inflow": 1.78941468
-    },
-    {
-      "code": "601288",
-      "name": "农业银行",
-      "entry_date": "2026-08-18",
-      "entry_close": 6.6,
-      "ret": 0.048484848484848575,
-      "bench_ret": -0.025971299712997054,
-      "day_chg": 0.019145802650957222,
-      "excess": 0.07445614819784563,
-      "holding_days": 14,
-      "exited": false,
-      "exit_reason": "满30天",
-      "status": "活跃",
-      "is_blue": true,
-      "updated": "2026-09-01",
-      "mktcap": 24673.8,
-      "net_inflow": 3.84062
     },
     {
       "code": "002363",
@@ -3149,7 +3149,7 @@
       "status": "活跃",
       "is_blue": false,
       "updated": "2026-09-01",
-      "mktcap": 146.28,
+      "mktcap": 146.83,
       "net_inflow": -0.33505944
     },
     {
@@ -7512,10 +7512,10 @@
       "code": "600809",
       "name": "山西汾酒",
       "entry_date": "2026-09-01",
-      "entry_close": 116.76,
+      "entry_close": 120.67,
       "ret": 0.0,
       "bench_ret": 0.0,
-      "day_chg": -0.019070822481727312,
+      "day_chg": 0.03348749571771159,
       "excess": 0.0,
       "holding_days": 0,
       "exited": false,
@@ -9363,6 +9363,24 @@
       "net_inflow": -0.05685013
     },
     {
+      "code": "600019",
+      "name": "宝钢股份",
+      "entry_date": "2026-08-19",
+      "entry_close": 5.91,
+      "ret": -0.008460236886632777,
+      "bench_ret": 0.01585927798550224,
+      "day_chg": 0.0068728522336769515,
+      "excess": -0.024319514872135017,
+      "holding_days": 13,
+      "exited": false,
+      "exit_reason": "满30天",
+      "status": "活跃",
+      "is_blue": false,
+      "updated": "2026-09-01",
+      "mktcap": 1276.43,
+      "net_inflow": 0.2704485
+    },
+    {
       "code": "002108",
       "name": "沧州明珠",
       "entry_date": "2026-08-25",
@@ -9757,24 +9775,6 @@
       "updated": "2026-09-01",
       "mktcap": 34.2,
       "net_inflow": 0.04528607
-    },
-    {
-      "code": "600019",
-      "name": "宝钢股份",
-      "entry_date": "2026-08-19",
-      "entry_close": 5.91,
-      "ret": -0.015228426395939021,
-      "bench_ret": 0.01585927798550224,
-      "day_chg": -0.0017152658662091813,
-      "excess": -0.03108770438144126,
-      "holding_days": 13,
-      "exited": false,
-      "exit_reason": "满30天",
-      "status": "活跃",
-      "is_blue": false,
-      "updated": "2026-09-01",
-      "mktcap": 1276.43,
-      "net_inflow": 0.2704485
     },
     {
       "code": "301280",
