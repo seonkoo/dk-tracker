@@ -95,10 +95,10 @@ select{background:var(--card);border:1px solid var(--line);border-radius:8px;pad
 
 <div class="chips" id="chips" style="display:none">
   <div class="chip on" data-l="all">全部</div>
+  <div class="chip" data-l="S">🔥9月活跃</div>
   <div class="chip" data-l="D">末D · 红区吸筹</div>
   <div class="chip" data-l="K">末K · 蓝区派发</div>
   <div class="chip" data-l="F">横盘待定</div>
-  <div class="chip" data-l="U">推断失败</div>
 </div>
 
 <div class="note" id="note"></div>
@@ -114,10 +114,10 @@ document.getElementById('theme').onclick=()=>{
   localStorage.setItem(LS_THEME,t);applyTheme(t);
 };
 
-const META={"generated": "2026-09-04", "exported": "2026-09-05", "window": "2026-08-17 ~ 2026-09-04", "source": "东方财富 选股导出（区间汇总，非逐日）", "note": "D点=买入信号(主力流入,红区吸筹)；K点=卖出信号(主力流出,蓝区派发)。单现票(D独有/K独有)末信号确定；双现票的末信号为走势推断（近10日趋势+突破+动量投票），标「末D/末K/横盘」+「走势推断」字样"};
+const META={"generated": "2026-09-04", "exported": "2026-09-05", "window": "8/17-9/4 全窗口 + 9/1-9/4 子窗口", "source": "东方财富 选股导出", "note": "D点=买入信号(主力流入,红区吸筹)；K点=卖出信号(主力流出,蓝区派发)。两层窗口：8/17-9/4 全窗口定单现票末信号；9/1-9/4 子窗口(9月新信号层)直接确认 632 只双现票末信号(东财9月✓)，其余双现票走势推断"};
 const PARTS=10;
 let DATA=null;
-let LASTMAP=null;   // {code:{last:'D'|'K'|'F',conf:'high'|'mid'|'low'}}
+let LASTMAP=null;   // {code:{l:'D'|'K'|'F', s:'e'(东财9月确认)|'i'(走势推断), g:'s'(9月有信号)|'a'(只在8月), c:conf}}
 const $=s=>document.querySelector(s);
 
 async function load(){
@@ -135,6 +135,7 @@ async function load(){
       code:row[0],name:row[1],price:row[2],chg:row[3],cap:row[4],ind:row[5],
       inD:!!row[6],inK:!!row[7],dCount:row[8]||0,kCount:row[9]||0,
       net:(row[8]||0)-(row[9]||0),
+      recentD:!!row[10],recentK:!!row[11],   // 9/1-9/4 子窗口(9月新信号层)
       last:LASTMAP[row[0]]||null
     }));
     DATA={meta:META,stocks,
@@ -149,7 +150,7 @@ async function load(){
   }
   const m=DATA.meta,s=DATA.stats;
   $('#meta').textContent=`数据日 ${m.generated} · 窗口 ${m.window} · 来源 ${m.source}`;
-  $('#note').textContent=`说明：${m.note}。${LASTMAP?Object.keys(LASTMAP).length:0} 只双现票已补末信号推断。双现=窗口内既出D又出K，最该盯；点「双现」区上方筛「末D」=最新停在买入红区，筛「末K」=最新停在卖出蓝区。`;
+  $('#note').textContent=`说明：${m.note}。「双现」=窗口内既出D又出K，最该盯；筛「末D」=最新停在买入红区，「末K」=最新停在卖出蓝区。徽章带「东财9月✓」=9/1后东财信号直接确认，最可信。`;
   $('#stats').innerHTML=`
     <div class="stat ${tab==='all'?'on':''}" data-t="all"><b>${s.total}</b><span>总计</span></div>
     <div class="stat ${tab==='d'?'on':''}" data-t="d"><b style="color:var(--red)">${s.d_only}</b><span>D 独有</span></div>
@@ -197,37 +198,44 @@ function blueSignal(){
   if(d>k) sig='蓝筹吸筹(买)>派发(卖)，风格偏积极';
   else if(k>d) sig='蓝筹派发(卖)>吸筹(买)，风格偏谨慎';
   // 双现票末信号分布（推断）
-  let bD=0,bK=0,bF=0,bU=0;
+  let bD=0,bK=0,bF=0,eD=0,eK=0;
   top.filter(s=>s.inD&&s.inK).forEach(s=>{
     const li=lastInfo(s);
-    if(!li||!li.last) bU++;
-    else if(li.last==='D') bD++;
-    else if(li.last==='K') bK++;
+    if(!li||!li.last) bF++;
+    else if(li.last==='D'){bD++; if(li.src==='e')eD++;}
+    else if(li.last==='K'){bK++; if(li.src==='e')eK++;}
     else bF++;
   });
-  const bPart = b?` 双现末信号(推断): 末D ${bD} / 末K ${bK} / 横盘 ${bF}${bU?` / 未知 ${bU}`:''}`:'';
+  const bPart = b?` 双现末信号: 末D ${bD}(东财${eD}) / 末K ${bK}(东财${eK}) / 横盘 ${bF}`:'';
   return `蓝筹Top100：D区=${d}(${((d/n)*100).toFixed(1)}%) K区=${k}(${((k/n)*100).toFixed(1)}%) 双现=${b}(${((b/n)*100).toFixed(1)}%) — ${sig}。${bPart}`;
 }
 $('#search').addEventListener('input',render);
 $('#sort').addEventListener('change',render);
 
+function isRecent(s){return !!(s.recentD||s.recentK||(s.recent&&(s.recent.d||s.recent.k)));}
 function flt(s){
   if(tab==='d') return s.inD && !s.inK;
   if(tab==='k') return s.inK && !s.inD;
   if(tab==='both'){
     if(!(s.inD&&s.inK)) return false;
     if(lastF==='all') return true;
-    if(lastF==='U') return !(s.last&&s.last.last);
-    return (s.last&&s.last.last)===lastF;
+    if(lastF==='S') return isRecent(s);   // 9/1-9/4 有新信号
+    if(lastF==='U') return !(s.last&&s.last.l);
+    return (s.last&&s.last.l)===lastF;
   }
   return true;
 }
 function zone(s){return (s.inD&&s.inK)?'b':(s.inD?'d':'k');}
 function lastInfo(s){
-  // 单现票末信号确定：D独有=末D；K独有=末K。双现票用推断表。
-  if(s.last && s.last.last) return {last:s.last.last, conf:s.last.conf};
-  if(s.inD && !s.inK) return {last:'D', conf:'sure'};
-  if(s.inK && !s.inD) return {last:'K', conf:'sure'};
+  // 双现票 s.last={l:'D/K/F', s:'e'=东财9月确认|'i'=走势推断, g:'s'=9月信号|'a'=8月, c:conf}
+  if(s.last && s.last.l){
+    const L=s.last;
+    let sub = L.s==='e' ? '东财9月✓' : (L.g==='s' ? '9月反复·推断' : '8月信号·推断');
+    if(L.l==='F') sub='近10日无方向';
+    return {last:L.l, src:L.s||'i', seg:L.g||'a', conf:L.s==='e'?'sure':(L.c||'low'), sub};
+  }
+  if(s.inD && !s.inK) return {last:'D', conf:'sure', src:'x', sub:'区间唯一'};
+  if(s.inK && !s.inD) return {last:'K', conf:'sure', src:'x', sub:'区间唯一'};
   return null;
 }
 
@@ -270,8 +278,8 @@ function card(s){
   let lastHtml='';
   if(z==='b'){
     if(!li) lastHtml='<span class="last lF">末信号 ?</span>';
-    else if(li.last==='D') lastHtml=`<span class="last lD">末D · ${li.conf==='sure'?'区间唯一':'红区吸筹'}</span>`;
-    else if(li.last==='K') lastHtml=`<span class="last lK">末K · ${li.conf==='sure'?'区间唯一':'蓝区派发'}</span>`;
+    else if(li.last==='D') lastHtml=`<span class="last lD">末D · ${li.sub}</span>`;
+    else if(li.last==='K') lastHtml=`<span class="last lK">末K · ${li.sub}</span>`;
     else lastHtml='<span class="last lF">横盘待定</span>';
   }else if(z==='d'){
     lastHtml='<span class="last lD">D 区 · 吸筹</span>';
@@ -289,7 +297,7 @@ function card(s){
     </div>
     <div class="row2">
       <span>市值 ${cap} · ${s.ind||'—'}</span>
-      <span style="font-size:10px">${li&&li.conf!=='sure'?'走势推断':'东财口径'}</span>
+      <span style="font-size:10px">${z==='b' ? (li&&li.src==='e'?'东财9月信号确认':'走势推断(近10日)') : '东财口径(区间唯一)'}</span>
     </div>
   </div>`;
 }
