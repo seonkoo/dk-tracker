@@ -120,11 +120,101 @@ def parse_date_from_filename(name, config):
     return m.group(1) if m else None
 
 
+def header_data_date(headers):
+    """从表头抽取「数据日期」（不是导出时间）。
+    例: '最新价(2026.09.04)' / 'K点 出现次数(2026.09.01-2026.09.04)' -> '2026-09-04'
+    取表头里出现的最晚日期（区间取结束日），比文件名里的导出时间更可靠。
+    """
+    best = None
+    for h in headers:
+        if not h:
+            continue
+        for m in re.findall(r"(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})", h):
+            try:
+                d = "%s-%02d-%02d" % (m[0], int(m[1]), int(m[2]))
+            except ValueError:
+                continue
+            if best is None or d > best:
+                best = d
+    return best
+
+
+def _read_header_row(path):
+    """只读表头行，用于识别数据日期 / 区间口径（避免整表解析）。"""
+    if load_workbook is None or not path or not os.path.exists(path):
+        return []
+    try:
+        wb = load_workbook(path, data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        for r in ws.iter_rows(max_row=1, values_only=True):
+            wb.close()
+            return [str(c).strip() if c is not None else "" for c in r]
+        wb.close()
+    except Exception:
+        pass
+    return []
+
+
+def peek_header_info(path):
+    """从表头识别：数据日期 data_date、信号区间 range_from/range_to。
+    例: 'K点 出现次数(2026.09.01-2026.09.04)' -> from=2026-09-01 to=2026-09-04
+       '最新价(2026.09.04)'                 -> data_date=2026-09-04
+    """
+    headers = _read_header_row(path)
+    if not headers:
+        return {"data_date": None, "range_from": None, "range_to": None}
+    data_date = header_data_date(headers)
+    rng_from = rng_to = None
+    for h in headers:
+        if not h or ("点" not in h):
+            continue
+        m = re.search(r"(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})\s*[-~至]\s*(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})", h)
+        if m:
+            rng_from = "%s-%02d-%02d" % (m.group(1), int(m.group(2)), int(m.group(3)))
+            rng_to = "%s-%02d-%02d" % (m.group(4), int(m.group(5)), int(m.group(6)))
+            break
+    return {"data_date": data_date, "range_from": rng_from, "range_to": rng_to}
+
+
+def _peek_header_date(path):
+    return peek_header_info(path).get("data_date")
+
+
+def _marker_mode(rows, hr, marker_i):
+    """判定 K点/D点 列口径：
+    'match' = 值为「符合」才算信号（旧选股格式）
+    'count' = 值为出现次数（区间导出格式，>0 即信号）
+    None    = 识别不出，退回「整表都是信号」
+    """
+    if marker_i is None:
+        return None
+    vals = []
+    for r in rows[hr + 1:]:
+        if r and len(r) > marker_i and r[marker_i] is not None:
+            vals.append(str(r[marker_i]).strip())
+    if not vals:
+        return None
+    if any(v == "符合" for v in vals):
+        return "match"
+    num = 0
+    for v in vals:
+        try:
+            if float(v) > 0:
+                num += 1
+        except ValueError:
+            pass
+    if num:
+        return "count"
+    return None
+
+
 # ---------- 读取 xlsx ----------
 def read_xlsx(path, config, kind=None):
     """读取一个 xlsx。
-    kind='K'/'D' 时优先按「选股格式」处理：找 K点/D点 列，值为「符合」的才是信号。
-    找不到标记列则按「精简清单格式」处理：整表每行都是信号。
+    kind='K'/'D' 时找 K点/D点 标记列：
+      列值为「符合」→ 只有符合的行是信号（旧选股格式）
+      列值为出现次数 → 次数>0 的行是信号（区间导出格式）
+    找不到可用标记列则按「精简清单格式」处理：整表每行都是信号。
     """
     if load_workbook is None:
         raise SystemExit("[错误] 未安装 openpyxl，无法读取 xlsx。请先 pip install openpyxl。")
@@ -139,6 +229,7 @@ def read_xlsx(path, config, kind=None):
     name_i = find_col(headers, config["sheet"].get("name_col_candidates", []))
     metric_i = find_col(headers, config["sheet"].get("metric_col_candidates", []))
     cap_i = find_col(headers, config["sheet"].get("cap_col_candidates", []))
+    ind_i = find_col(headers, ["东财行业分类二级", "东财行业", "所属行业", "行业", "行业分类"])
     if code_i is None:
         raise SystemExit(
             "[错误] 在 %s 找不到代码列。\n表头: %s\n候选名: %s"
@@ -150,14 +241,21 @@ def read_xlsx(path, config, kind=None):
         marker_i = find_col(headers, ["K点"])
     elif kind == "D":
         marker_i = find_col(headers, ["D点"])
-    mode = "选股(符合筛选)" if marker_i is not None else "精简清单(整表)"
+    mmode = _marker_mode(rows, hr, marker_i)
+    mode = {"match": "选股(符合筛选)", "count": "区间出现次数(>0)"}.get(mmode, "精简清单(整表)")
     out = []
     for r in rows[hr + 1:]:
         if not r or all(c is None for c in r):
             continue
-        if marker_i is not None:
+        if mmode == "match":
             v = r[marker_i]
             if v is None or str(v).strip() != "符合":
+                continue
+        elif mmode == "count":
+            try:
+                if float(str(r[marker_i]).strip()) <= 0:
+                    continue
+            except Exception:
                 continue
         raw = r[code_i]
         if raw is None:
@@ -173,14 +271,51 @@ def read_xlsx(path, config, kind=None):
             except Exception:
                 metric = None
         cap = parse_cap(r[cap_i]) if cap_i is not None else None
-        out.append({"code": code, "name": name, "metric": metric, "cap": cap})
-    print("  [统计] %s  解析模式=%s  命中=%d行  含市值=%d行" % (
-        os.path.basename(path), mode, len(out), sum(1 for x in out if x["cap"] is not None)))
+        ind = str(r[ind_i]).strip() if (ind_i is not None and r[ind_i] is not None) else ""
+        out.append({"code": code, "name": name, "metric": metric, "cap": cap, "ind": ind})
+    print("  [统计] %s  解析模式=%s  命中=%d行  含市值=%d行  含行业=%d行" % (
+        os.path.basename(path), mode, len(out),
+        sum(1 for x in out if x["cap"] is not None),
+        sum(1 for x in out if x.get("ind"))))
     return out
 
 
+def ingest_side_files(paths, config):
+    """把额外表格（如「8月17日后出现过K/D选股」这类区间表）里的
+    股票名称 + 东财二级行业 合并进 stocks.json / industry_map.json，不产生新的日记录。
+    返回 (新增名称数, 新增行业数, 总行业数)
+    """
+    if not paths:
+        return (0, 0, 0)
+    stocks = load_json(STOCKS_PATH, {})
+    ind_map = load_json(INDUSTRY_PATH, {})
+    n_name = n_ind = 0
+    for p in paths:
+        if not p or not os.path.exists(p):
+            continue
+        try:
+            rows = read_xlsx(p, config, None)
+        except SystemExit:
+            continue
+        for it in rows:
+            c = it.get("code")
+            if not c or is_bj(c):
+                continue
+            if it.get("name") and not stocks.get(c):
+                stocks[c] = it["name"]
+                n_name += 1
+            if it.get("ind") and not ind_map.get(c):
+                ind_map[c] = it["ind"]
+                n_ind += 1
+    save_json(STOCKS_PATH, stocks)
+    save_json(INDUSTRY_PATH, ind_map)
+    print("  [侧表] 合并 %d 个文件 -> 新增名称 %d，新增行业 %d，行业库共 %d 只" % (
+        len(paths), n_name, n_ind, len(ind_map)))
+    return (n_name, n_ind, len(ind_map))
+
+
 # ---------- 处理一天 ----------
-def process_day(k_path, d_path, date, config):
+def process_day(k_path, d_path, date, config, range_from=None):
     k = read_xlsx(k_path, config, "K")
     d = read_xlsx(d_path, config, "D")
     # 用户要求排除北交所（92/93/8/4 开头）
@@ -189,10 +324,18 @@ def process_day(k_path, d_path, date, config):
     print("  [统计] %s  K表=%d行  D表=%d行 (已排除北交所)" % (date, len(k), len(d)))
 
     stocks = load_json(STOCKS_PATH, {})
+    ind_map = load_json(INDUSTRY_PATH, {})
+    n_ind = 0
     for it in k + d:
         if it["code"] and it["name"]:
             stocks[it["code"]] = it["name"]
+        if it["code"] and it.get("ind") and not ind_map.get(it["code"]):
+            ind_map[it["code"]] = it["ind"]
+            n_ind += 1
     save_json(STOCKS_PATH, stocks)
+    if n_ind:
+        save_json(INDUSTRY_PATH, ind_map)
+        print("  [行业] 新增 %d 只，行业库共 %d 只" % (n_ind, len(ind_map)))
 
     k_codes = sorted({i["code"] for i in k})
     d_codes = sorted({i["code"] for i in d})
@@ -211,6 +354,12 @@ def process_day(k_path, d_path, date, config):
     removed = purge_bj(records)
     if removed:
         print("  [北交所] 已从历史数据剔除 %d 个信号" % removed)
+    old = next((x for x in records.get("days", []) if x["date"] == date), None)
+    if range_from is None and old:
+        range_from = old.get("range_from")
+    if range_from:
+        day["range_from"] = range_from
+        print("  [口径] %s 为区间数据：%s ~ %s" % (date, range_from, date))
     days = [x for x in records.get("days", []) if x["date"] != date]
     days.append(day)
     days.sort(key=lambda x: x["date"])
@@ -674,7 +823,20 @@ def _yi(v, nd=2):
 
 def momentum_label(t, d5, d10=None):
     """资金势头判定 → (label, tone)。tone: strong_in/in/flat/out/strong_out
-    依据：今日主力净额 vs 5日均值 的方向与加速度。"""
+    依据：今日主力净额 vs 5日均值 的方向与加速度。
+    t 为 None（盘前/当日主力尚未生成）时，退化为 5 日口径，绝不当成 0。"""
+    a5 = None if d5 is None else float(d5) / 5.0
+    if t is None:
+        if a5 is None:
+            return "暂无数据", "flat"
+        a10 = None if d10 is None else float(d10) / 10.0
+        base = "5日净流入" if a5 > 0 else ("5日净流出" if a5 < 0 else "5日持平")
+        if a10 is not None and a5 > 0 and a5 > a10 * 1.2:
+            base += "·加速"
+        elif a10 is not None and a5 < 0 and a5 < a10 * 1.2:
+            base += "·加速"
+        tone = "in" if a5 > 0 else ("out" if a5 < 0 else "flat")
+        return base, tone
     try:
         t = float(t or 0)
     except Exception:
@@ -730,9 +892,9 @@ def fetch_industry_boards(pages=5, page_size=100, timeout=25):
                     continue
                 seen.add(code)
                 main = _yi(x.get("f62"))
-                if main is None:
-                    continue
                 d5, d10 = _yi(x.get("f164")), _yi(x.get("f267"))
+                if main is None and d5 is None and d10 is None:
+                    continue              # 盘前 f62 可能为 "-"，此时靠 5/10 日口径撑住
                 lab, tone = momentum_label(main, d5, d10)
                 out.append({"code": code, "name": x.get("f14"), "chg": x.get("f3"),
                             "main": main, "ratio": x.get("f184"),
@@ -746,7 +908,7 @@ def fetch_industry_boards(pages=5, page_size=100, timeout=25):
         except Exception as e:
             print("  [行业板块] 第%d页拉取失败: %s" % (pn, e))
             break
-    out.sort(key=lambda z: -(z["main"] or 0))
+    out.sort(key=lambda z: -((z["main"] if z["main"] is not None else (z["d5"] or 0) / 5.0)))
     return out
 
 
@@ -789,22 +951,42 @@ def fetch_market_panorama(raw_stocks, records=None, obs=None, timeout=25):
                 r["label"] = disp
                 indices.append(r)
 
+        # 盘前识别：指数涨幅与今日主力均为 0/空 → 当日资金尚未生成，
+        # 此时不能把 0 当成「平衡」，必须切到 5 日/10 日口径。
+        premarket = bool(indices) and all(
+            (not i.get("chg")) and not i.get("main") for i in indices)
+        if premarket:
+            for r in indices:
+                for kk in ("main", "super", "big", "mid", "small", "ratio"):
+                    r[kk] = None
+                r["mom"], r["tone"] = momentum_label(None, r.get("d5"), r.get("d10"))
+            print("  [资金全景] 盘前：当日主力尚未生成，改用 5 日/10 日口径")
+
         # 行业板块资金：东财全量行业板块口径（分页拉取，按主力净额降序）
         industries = fetch_industry_boards(timeout=timeout)
 
         # ---- 2) 沪深两市合计（上证 + 深证）
         summary = None
         if indices:
-            def sget(key):
-                vals = [i[key] for i in indices if i.get(key) is not None]
-                return round(sum(vals), 2) if vals else None
-            ss, mm = sget("main"), sget("mid")
-            sm, bb = sget("small"), sget("big")
-            sup = sget("super")
-            d5, d10 = sget("d5"), sget("d10")
-            lab, tone = momentum_label(ss, d5, d10)
-            summary = {"main": ss, "super": sup, "big": bb, "mid": mm, "small": sm,
-                       "d5": d5, "d10": d10, "mom": lab, "tone": tone}
+            if premarket:
+                def sget(key):
+                    vals = [i[key] for i in indices if i.get(key) is not None]
+                    return round(sum(vals), 2) if vals else None
+                d5, d10 = sget("d5"), sget("d10")
+                lab, tone = momentum_label(None, d5, d10)
+                summary = {"main": None, "super": None, "big": None, "mid": None,
+                           "small": None, "d5": d5, "d10": d10, "mom": lab, "tone": tone}
+            else:
+                def sget(key):
+                    vals = [i[key] for i in indices if i.get(key) is not None]
+                    return round(sum(vals), 2) if vals else None
+                ss, mm = sget("main"), sget("mid")
+                sm, bb = sget("small"), sget("big")
+                sup = sget("super")
+                d5, d10 = sget("d5"), sget("d10")
+                lab, tone = momentum_label(ss, d5, d10)
+                summary = {"main": ss, "super": sup, "big": bb, "mid": mm, "small": sm,
+                           "d5": d5, "d10": d10, "mom": lab, "tone": tone}
 
         # ---- 3) 个股 → 行业聚合（当日 K/D 信号 + 个股主力净额）
         days = (records or {}).get("days", []) or []
@@ -865,7 +1047,7 @@ def fetch_market_panorama(raw_stocks, records=None, obs=None, timeout=25):
         verdict = build_market_verdict(summary, industries, stock_industry,
                                        kset, dset, obs)
 
-        out.update({"available": True,
+        out.update({"available": True, "premarket": premarket,
                     "updated": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                     "indices": indices, "summary": summary,
                     "industries": industries, "stock_industry": stock_industry,
@@ -880,9 +1062,25 @@ def fetch_market_panorama(raw_stocks, records=None, obs=None, timeout=25):
 
 def build_market_verdict(summary, industries, stock_industry, kset, dset, obs):
     """综合「大市主力资金 + 行业宽度 + 信号面 + 观察池实况」给出研判。"""
-    main = (summary or {}).get("main") or 0
-    # 方向与强度
-    if main > 100:
+    sm0 = summary or {}
+    main = sm0.get("main")
+    premarket = main is None                 # 当日主力尚未生成（盘前）
+    basis = "5日" if premarket else "今日"
+    if premarket:
+        t = sm0.get("d5")
+        t = 0.0 if t is None else float(t)
+        # 5 日量级用 3 倍阈值（5 天累计）
+        if t > 300:
+            direction, strength = "5日大幅净流入", "强"
+        elif t > 60:
+            direction, strength = "5日净流入", "偏强"
+        elif t > -60:
+            direction, strength = "5日基本平衡", "中性"
+        elif t > -300:
+            direction, strength = "5日净流出", "偏弱"
+        else:
+            direction, strength = "5日大幅净流出", "弱"
+    elif main > 100:
         direction, strength = "大幅净流入", "强"
     elif main > 20:
         direction, strength = "净流入", "偏强"
@@ -892,9 +1090,14 @@ def build_market_verdict(summary, industries, stock_industry, kset, dset, obs):
         direction, strength = "净流出", "偏弱"
     else:
         direction, strength = "大幅净流出", "弱"
-    # 行业宽度
+    if premarket:
+        main = t
+    # 行业宽度（盘前今日主力缺失时，用 5 日净额判方向）
     tot = len(industries) or 1
-    in_n = sum(1 for i in industries if (i.get("main") or 0) > 0)
+    if premarket:
+        in_n = sum(1 for i in industries if (i.get("d5") or 0) > 0)
+    else:
+        in_n = sum(1 for i in industries if (i.get("main") or 0) > 0)
     breadth = round(in_n * 100.0 / tot, 1)
     # 信号面
     nk, nd = len(kset), len(dset)
@@ -909,8 +1112,9 @@ def build_market_verdict(summary, industries, stock_industry, kset, dset, obs):
 
     # 结论（严格以价格动作为准，不臆造）
     parts = []
-    parts.append("沪深两市主力资金%s（%+.0f亿，强度%s）" % (direction, main, strength))
-    parts.append("行业净流入宽度 %.0f%%（%d/%d）" % (breadth, in_n, tot))
+    parts.append("沪深两市主力资金%s（%s %+.0f亿，强度%s）"
+                 % (direction, basis, main, strength))
+    parts.append("行业净流入宽度 %.0f%%（%d/%d，%s口径）" % (breadth, in_n, tot, basis))
     parts.append("今日信号 K=%d D=%d，%s" % (nk, nd, sig))
     if win is not None:
         parts.append("观察池胜率 %.1f%%、均收益 %+.2f%%" % (win, avg or 0))
@@ -923,6 +1127,7 @@ def build_market_verdict(summary, industries, stock_industry, kset, dset, obs):
         mood = "尚未修复，局部企稳"
     text = "；".join(parts) + "。综合研判：" + mood + "。"
     return {"direction": direction, "strength": strength, "main": round(main, 2),
+            "premarket": premarket, "basis": basis,
             "breadth": breadth, "in_n": in_n, "tot": tot,
             "nk": nk, "nd": nd, "sig": sig,
             "reso_bull": reso_bull, "reso_bear": reso_bear,
@@ -1465,6 +1670,7 @@ def build_flow(records, stocks, config):
         allchg = [metrics.get(c) for c in flagged if isinstance(metrics.get(c), (int, float))]
         timeline.append({
             "date": date,
+            "range_from": d.get("range_from"),
             "k": len(kset), "d": len(dset),
             "net": len(kset) - len(dset),                       # >0 卖出占优(净流出), <0 买入占优(净流入)
             "ratio": round(len(dset) / len(kset), 2) if kset else None,
@@ -1875,6 +2081,10 @@ def main():
     ap.add_argument("--d")
     ap.add_argument("--date")
     ap.add_argument("--config", default=CONFIG_PATH)
+    ap.add_argument("--range-from", dest="range_from", default=None,
+                    help="标记这批表是区间数据（如 2026-09-01），配合 --date 给出结束日")
+    ap.add_argument("--ind-files", nargs="*", default=None,
+                    help="额外的区间/历史表，只抽取股票名称与东财二级行业，不生成日记录")
     ap.add_argument("--regen", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
@@ -1896,10 +2106,28 @@ def main():
         return
 
     if args.k and args.d:
-        date = args.date or parse_date_from_filename(args.k, config) or parse_date_from_filename(args.d, config)
+        date = args.date
         if not date:
-            raise SystemExit("[错误] 文件名无日期且未用 --date 指定，无法定位当天。")
-        process_day(args.k, args.d, date, config)
+            # 表头里的数据日期（如「最新价(2026.09.04)」）比文件名里的导出时间更可靠
+            date = _peek_header_date(args.k) or _peek_header_date(args.d)
+        if not date:
+            date = parse_date_from_filename(args.k, config) or parse_date_from_filename(args.d, config)
+        if not date:
+            raise SystemExit("[错误] 表头/文件名均无日期且未用 --date 指定，无法定位当天。")
+        # 自动识别区间口径（如「K点 出现次数(2026.09.01-2026.09.04)」）
+        range_from = args.range_from
+        if range_from is None:
+            for p in (args.k, args.d):
+                info = peek_header_info(p)
+                if info["range_from"] and info["range_to"] and info["range_from"] < info["range_to"]:
+                    range_from = info["range_from"]
+                    if not args.date and info["range_to"]:
+                        date = info["range_to"]
+                    break
+        if args.ind_files:
+            ingest_side_files(args.ind_files, config)
+        process_day(args.k, args.d, date, config, range_from=range_from)
+        print("  [日期] 采用 %s%s" % (date, ("（区间 %s 起）" % range_from) if range_from else "（单日）"))
         records = load_json(RECORDS_PATH, {"updated": None, "days": []})
         purge_bj(records)
         stocks = load_json(STOCKS_PATH, {})

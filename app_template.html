@@ -645,6 +645,31 @@ function parseCap(v){
   if(u==='万亿') return n*10000;
   return n/1e8;
 }
+function headerDataDate(headers){
+  // 从表头抽取数据日期（不是导出时间）。例：'最新价(2026.09.04)' -> '2026-09-04'
+  // 取表头里最晚的日期（区间列 '2026.09.01-2026.09.04' 取结束日）
+  let best=null;
+  (headers||[]).forEach(h=>{
+    if(!h) return;
+    const re=/(\d{4})[.\-\/年](\d{1,2})[.\-\/月](\d{1,2})/g; let m;
+    while((m=re.exec(String(h)))!==null){
+      const d=m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+      if(best===null || d>best) best=d;
+    }
+  });
+  return best;
+}
+function headerRange(headers){
+  // 识别「K点 出现次数(2026.09.01-2026.09.04)」这类区间口径
+  let from=null, to=null;
+  (headers||[]).forEach(h=>{
+    if(!h || String(h).indexOf('点')<0) return;
+    const m=String(h).match(/(\d{4})[.\-\/年](\d{1,2})[.\-\/月](\d{1,2})\s*[-~至]\s*(\d{4})[.\-\/年](\d{1,2})[.\-\/月](\d{1,2})/);
+    if(m){ from=m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+           to=m[4]+'-'+String(m[5]).padStart(2,'0')+'-'+String(m[6]).padStart(2,'0'); }
+  });
+  return {from,to};
+}
 function detectDate(...names){
   for(const n of names){
     let m = (n||'').match(/(\d{4}-\d{2}-\d{2})/); if(m) return m[1];
@@ -672,10 +697,24 @@ async function parseFile(file, kindHint){
   let marker_i=null, kind=kindHint;
   if(kpt!=null){ marker_i=kpt; kind='K'; }
   else if(dpt!=null){ marker_i=dpt; kind='D'; }
+  // 标记列口径：值为「符合」→ match；否则是出现次数 → count(>0 即命中)
+  let mmode=null;
+  if(marker_i!=null){
+    let hasMatch=false, hasNum=false;
+    for(let i=hr+1;i<rows.length;i++){
+      const r=rows[i]; if(!r) continue;
+      const v=r[marker_i]; if(v==null) continue;
+      const s=String(v).trim();
+      if(s==='符合'){ hasMatch=true; break; }
+      if(s!=='' && !isNaN(parseFloat(s))) hasNum=true;
+    }
+    mmode = hasMatch ? 'match' : (hasNum ? 'count' : null);
+  }
   const codes=new Set(); const metrics={}; const names={}; const caps={};
   for(let i=hr+1;i<rows.length;i++){
     const r=rows[i]; if(!r || r.every(c=>c==null)) continue;
-    if(marker_i!=null){ const v=r[marker_i]; if(v==null || String(v).trim()!=='符合') continue; }
+    if(mmode==='match'){ const v=r[marker_i]; if(v==null || String(v).trim()!=='符合') continue; }
+    else if(mmode==='count'){ const v=parseFloat(String(r[marker_i]).trim()); if(isNaN(v) || v<=0) continue; }
     const raw=r[code_i]; if(raw==null) continue;
     const code=normCode(raw); if(!code) continue;
     const nm = (name_i!=null && r[name_i]!=null) ? String(r[name_i]).trim() : '';
@@ -684,7 +723,11 @@ async function parseFile(file, kindHint){
     if(cap_i!=null && r[cap_i]!=null){ const c=parseCap(r[cap_i]); if(c!=null) caps[code]=c; }
     codes.add(code);
   }
-  return {kind, codes:[...codes], metrics, names, caps, mode: marker_i!=null?'选股(符合)':'清单'};
+  const rg = headerRange(headers);
+  return {kind, codes:[...codes], metrics, names, caps,
+          dataDate: headerDataDate(headers),
+          rangeFrom: (rg.from && rg.to && rg.from < rg.to) ? rg.from : null,
+          mode: mmode==='match' ? '选股(符合)' : (mmode==='count' ? '区间出现次数(>0)' : '清单')};
 }
 
 async function onPick(){ /* 占位：选择后状态提示 */ }
@@ -698,7 +741,9 @@ async function handleUpload(){
   try{
     const kData=await parseFile(fk,'K');
     const dData=await parseFile(fd,'D');
-    const date=detectDate(fk.name, fd.name) || todayStr();
+    // 表头里的数据日期优先于文件名（文件名常是导出时间，会导致记错交易日）
+    const date=(kData.dataDate||dData.dataDate) || detectDate(fk.name, fd.name) || todayStr();
+    const rangeFrom=kData.rangeFrom||dData.rangeFrom||null;
     let kArr=[], dArr=[];
     [kData,dData].forEach(d=>{ if(d.kind==='K') kArr=kArr.concat(d.codes); else if(d.kind==='D') dArr=dArr.concat(d.codes); });
     if(kArr.length===0 && dArr.length===0){ kArr=kData.codes; dArr=dData.codes; }
@@ -707,11 +752,14 @@ async function handleUpload(){
     const metrics={...((kData||{}).metrics||{}), ...((dData||{}).metrics||{})};
     const caps={...((kData||{}).caps||{}), ...((dData||{}).caps||{})};
     const names={...((kData||{}).names||{}), ...((dData||{}).names||{})};
-    days.push({date, k:kArr, d:dArr, metrics, caps});
+    const day={date, k:kArr, d:dArr, metrics, caps};
+    if(rangeFrom) day.range_from=rangeFrom;
+    days.push(day);
     days.sort((a,b)=>a.date<b.date?-1:(a.date>b.date?1:0));
     h.days=days; h.updated=date; h.names={...h.names,...names};
     saveHistory(h);
-    setStatus('已合并 '+date+'：K='+kArr.length+'  D='+dArr.length+'（历史共 '+days.length+' 天）');
+    setStatus('已合并 '+date+(rangeFrom?('（区间 '+rangeFrom+' 起）'):'')+'：K='+kArr.length+'  D='+dArr.length
+      +'（历史共 '+days.length+' 天）｜解析：'+kData.mode+' / '+dData.mode);
     render();
   }catch(e){ setStatus('解析失败：'+e.message); }
 }
@@ -855,7 +903,7 @@ function toggleWRest(){
 function render(){
   const h=loadHistory();
   const DATA=analyze(h);
-  document.getElementById('sub').textContent='最后更新：'+(DATA.updated||'—')+' ｜ K→D / D→K 反转自动置顶预警';
+  document.getElementById('sub').innerHTML='最后更新：'+esc(DATA.updated||'—')+rangeNote()+' ｜ K→D / D→K 反转自动置顶预警';
   const c=document.getElementById('cards');
   c.innerHTML = card(DATA.total_stocks,'跟踪个股')+card(DATA.today_k.length,'今日 K','k')+card(DATA.today_d.length,'今日 D','d')+card(DATA.stocks_with_reversal,'反转个股');
   const warns=DATA.rows.filter(r=>r.latest_reversal);
@@ -1201,6 +1249,17 @@ async function renderPullback(){
 
 /* ============ 资金全景：个股 → 行业 → 大市主力资金 ============ */
 let MKT_SI_LIMIT = 25;   // 个股→行业表默认显示行数（0 = 全部）
+function lastRange(){
+  // 最新一天若是区间口径（如 09-01~09-04 合并导出），返回 {from,to}
+  const ds=(SEED&&SEED.days)||[];
+  if(!ds.length) return null;
+  const d=ds[ds.length-1];
+  return d && d.range_from ? {from:d.range_from, to:d.date} : null;
+}
+function rangeNote(){
+  const r=lastRange(); if(!r) return '';
+  return ' <span class="badge reso-div">区间 '+r.from.slice(5)+'~'+r.to.slice(5)+'</span>';
+}
 function fmtYi(v, nd){
   if(v==null) return '<span class="tl">—</span>';
   const cls=v>0?'sK':(v<0?'sD':'');
@@ -1254,7 +1313,8 @@ function renderMarket(){
     if(tbSi) tbSi.innerHTML='';
     return;
   }
-  document.getElementById('mkt-sub').textContent='资金全景 · 数据时间 '+(M.updated||'—')+' ｜ 来源 '+(M.source||'东财实时');
+  const preTxt = M.premarket ? ' ｜ <b>盘前：今日主力尚未生成，资金列展示 5 日/10 日口径</b>' : '';
+  document.getElementById('mkt-sub').innerHTML='资金全景 · 数据时间 '+(M.updated||'—')+' ｜ 来源 '+(M.source||'东财实时')+preTxt;
   // 1) 大市卡片（沪深两市合计）
   const s = M.summary||{};
   document.getElementById('mkt-cards').innerHTML =
@@ -1278,7 +1338,8 @@ function renderMarket(){
       '<h2>🧭 大市研判</h2>'
     + '<div style="font-size:14px;line-height:1.7">'+esc(v.text||'—')+'</div>'
     + '<div class="sub" style="margin:8px 0 0">资金×信号共振：<span class="badge reso-bull">看多 '+v.reso_bull+'</span> '
-    + '<span class="badge reso-bear">看空 '+v.reso_bear+'</span>　行业净流入宽度 '+v.breadth+'%（'+v.in_n+'/'+v.tot+'）</div>';
+    + '<span class="badge reso-bear">看空 '+v.reso_bear+'</span>　行业净流入宽度 '+v.breadth+'%（'+v.in_n+'/'+v.tot+'）'
+    + (v.premarket ? '　<span class="badge reso-div">'+(v.basis||'5日')+'口径</span>' : '') + '</div>';
   // 4) 行业板块 流入/流出 TOP12
   const ind = M.industries||[];
   if(!ind.length){
@@ -1323,7 +1384,8 @@ function renderFlow(){
   else{
     tl.innerHTML = F.timeline.map(t=>{
       const netcls = t.net>0?'out':(t.net<0?'in':'');
-      return '<tr><td class="tl">'+esc(t.date)+'</td><td>'+t.d+'</td><td>'+t.k+'</td>'+
+      const rgTag = t.range_from ? (' <span class="badge reso-div" title="'+esc(t.range_from)+' ~ '+esc(t.date)+'">区间</span>') : '';
+      return '<tr><td class="tl">'+esc(t.date)+rgTag+'</td><td>'+t.d+'</td><td>'+t.k+'</td>'+
         '<td class="flow-net '+netcls+'">'+(t.net>0?'+':'')+t.net+'</td>'+
         '<td>'+fmtMetric2(t.avg_chg)+'</td>'+
         '<td>'+t.up+' / '+t.down+'</td></tr>';
