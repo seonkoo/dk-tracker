@@ -1799,7 +1799,7 @@
       "status": "已流出",
       "is_blue": false,
       "updated": "2026-09-24",
-      "mktcap": 56.88,
+      "mktcap": 57.26,
       "net_inflow": -0.09070402
     },
     {
@@ -2754,7 +2754,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 191.74,
-      "net_inflow": 0.04447114
+      "net_inflow": null
     },
     {
       "code": "300153",
@@ -9467,7 +9467,7 @@
       "status": "已流出",
       "is_blue": false,
       "updated": "2026-08-20",
-      "mktcap": 468.72,
+      "mktcap": 468.75,
       "net_inflow": 0.40879414
     },
     {
@@ -12726,7 +12726,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 310.93,
-      "net_inflow": 0.0990135
+      "net_inflow": null
     },
     {
       "code": "000545",
@@ -13644,7 +13644,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 181.84,
-      "net_inflow": -0.0072828
+      "net_inflow": null
     },
     {
       "code": "600598",
@@ -14508,7 +14508,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 196.23,
-      "net_inflow": -0.12814488
+      "net_inflow": null
     },
     {
       "code": "300481",
@@ -14526,7 +14526,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 38.96,
-      "net_inflow": -0.03975986
+      "net_inflow": null
     },
     {
       "code": "600882",
@@ -15119,7 +15119,7 @@
       "status": "已流出",
       "is_blue": false,
       "updated": "2026-09-24",
-      "mktcap": 203.82,
+      "mktcap": 211.3,
       "net_inflow": -0.64583888
     },
     {
@@ -15353,7 +15353,7 @@
       "status": "已流出",
       "is_blue": false,
       "updated": "2026-09-21",
-      "mktcap": 137.51,
+      "mktcap": 137.99,
       "net_inflow": 0.0190648
     },
     {
@@ -16992,7 +16992,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 61.66,
-      "net_inflow": -0.10339972
+      "net_inflow": null
     },
     {
       "code": "688521",
@@ -17045,7 +17045,7 @@
       "status": "已流出",
       "is_blue": false,
       "updated": "2026-10-05",
-      "mktcap": 278.94,
+      "mktcap": 282.3,
       "net_inflow": 0.1063458
     },
     {
