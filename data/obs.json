@@ -5526,7 +5526,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 57.44,
-      "net_inflow": 0.01366255
+      "net_inflow": null
     },
     {
       "code": "600028",
@@ -9449,7 +9449,7 @@
       "status": "已流出",
       "is_blue": true,
       "updated": "2026-08-20",
-      "mktcap": 9076.09,
+      "mktcap": 9076.12,
       "net_inflow": -0.0980352
     },
     {
@@ -9810,7 +9810,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 41.41,
-      "net_inflow": -0.02732108
+      "net_inflow": null
     },
     {
       "code": "300819",
