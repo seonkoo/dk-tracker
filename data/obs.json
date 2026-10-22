@@ -3042,7 +3042,7 @@
       "is_blue": false,
       "updated": "2026-09-16",
       "mktcap": 117.87,
-      "net_inflow": null
+      "net_inflow": 0.12046044
     },
     {
       "code": "600639",
@@ -3852,7 +3852,7 @@
       "is_blue": false,
       "updated": "2026-08-19",
       "mktcap": 110.91,
-      "net_inflow": null
+      "net_inflow": 0.12953355
     },
     {
       "code": "600654",
@@ -6354,7 +6354,7 @@
       "is_blue": false,
       "updated": "2026-08-19",
       "mktcap": 85.22,
-      "net_inflow": null
+      "net_inflow": -0.09379001
     },
     {
       "code": "000333",
@@ -11142,7 +11142,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 70.35,
-      "net_inflow": null
+      "net_inflow": -0.02442154
     },
     {
       "code": "688275",
