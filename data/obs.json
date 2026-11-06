@@ -90,7 +90,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 64.68,
-      "net_inflow": -0.06779638
+      "net_inflow": null
     },
     {
       "code": "000678",
@@ -108,7 +108,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 81.67,
-      "net_inflow": null
+      "net_inflow": -2.09650535
     },
     {
       "code": "000560",
@@ -126,7 +126,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 68.78,
-      "net_inflow": -0.45650747
+      "net_inflow": null
     },
     {
       "code": "688205",
@@ -576,7 +576,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 67.5,
-      "net_inflow": 0.10458765
+      "net_inflow": null
     },
     {
       "code": "688517",
@@ -828,7 +828,7 @@
       "is_blue": false,
       "updated": "2026-09-21",
       "mktcap": 65.88,
-      "net_inflow": 0.13016299
+      "net_inflow": null
     },
     {
       "code": "002564",
@@ -1098,7 +1098,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 426.45,
-      "net_inflow": -0.20550926
+      "net_inflow": null
     },
     {
       "code": "600790",
@@ -1458,7 +1458,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 17.02,
-      "net_inflow": 0.01589364
+      "net_inflow": null
     },
     {
       "code": "601328",
@@ -3078,7 +3078,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 19.04,
-      "net_inflow": -0.00200722
+      "net_inflow": null
     },
     {
       "code": "603393",
@@ -3114,7 +3114,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 47.74,
-      "net_inflow": -0.0548819
+      "net_inflow": null
     },
     {
       "code": "603232",
@@ -3276,7 +3276,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 117.89,
-      "net_inflow": -0.03338776
+      "net_inflow": null
     },
     {
       "code": "603395",
@@ -4068,7 +4068,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 40.59,
-      "net_inflow": null
+      "net_inflow": 0.06044578
     },
     {
       "code": "601900",
@@ -4176,7 +4176,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 81.49,
-      "net_inflow": -0.08391573
+      "net_inflow": null
     },
     {
       "code": "600386",
@@ -6371,7 +6371,7 @@
       "status": "已流出",
       "is_blue": true,
       "updated": "2026-09-21",
-      "mktcap": 6836.96,
+      "mktcap": 6836.99,
       "net_inflow": -1.22366284
     },
     {
@@ -6768,7 +6768,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 51.56,
-      "net_inflow": -0.03853616
+      "net_inflow": null
     },
     {
       "code": "000501",
@@ -8118,7 +8118,7 @@
       "is_blue": false,
       "updated": "2026-09-24",
       "mktcap": 420.46,
-      "net_inflow": -0.0803407
+      "net_inflow": null
     },
     {
       "code": "002401",
@@ -8424,7 +8424,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 224.56,
-      "net_inflow": -0.05151139
+      "net_inflow": null
     },
     {
       "code": "002239",
@@ -9072,7 +9072,7 @@
       "is_blue": false,
       "updated": "2026-09-17",
       "mktcap": 487.43,
-      "net_inflow": -0.03324273
+      "net_inflow": null
     },
     {
       "code": "300141",
@@ -9306,7 +9306,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 230.41,
-      "net_inflow": -0.12885819
+      "net_inflow": null
     },
     {
       "code": "688789",
@@ -9558,7 +9558,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 59.75,
-      "net_inflow": -0.04279035
+      "net_inflow": null
     },
     {
       "code": "000900",
@@ -10386,7 +10386,7 @@
       "is_blue": false,
       "updated": "2026-09-01",
       "mktcap": 242.61,
-      "net_inflow": -0.14792763
+      "net_inflow": null
     },
     {
       "code": "002607",
@@ -10674,7 +10674,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 98.91,
-      "net_inflow": -0.04343024
+      "net_inflow": null
     },
     {
       "code": "002552",
@@ -11556,7 +11556,7 @@
       "is_blue": false,
       "updated": "2026-08-25",
       "mktcap": 331.48,
-      "net_inflow": -0.81627474
+      "net_inflow": null
     },
     {
       "code": "301002",
@@ -11628,7 +11628,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 64.72,
-      "net_inflow": 0.01842208
+      "net_inflow": null
     },
     {
       "code": "600698",
@@ -11736,7 +11736,7 @@
       "is_blue": false,
       "updated": "2026-09-14",
       "mktcap": 24.67,
-      "net_inflow": -0.01784008
+      "net_inflow": null
     },
     {
       "code": "300068",
@@ -12240,7 +12240,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 166.94,
-      "net_inflow": -0.08721207
+      "net_inflow": null
     },
     {
       "code": "600885",
@@ -12528,7 +12528,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 45.79,
-      "net_inflow": 0.02282822
+      "net_inflow": null
     },
     {
       "code": "603067",
@@ -12906,7 +12906,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 58.32,
-      "net_inflow": -0.06871064
+      "net_inflow": null
     },
     {
       "code": "000833",
@@ -13014,7 +13014,7 @@
       "is_blue": false,
       "updated": "2026-09-08",
       "mktcap": 35.44,
-      "net_inflow": 0.00499076
+      "net_inflow": null
     },
     {
       "code": "600211",
@@ -13338,7 +13338,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 45.07,
-      "net_inflow": -0.22337728
+      "net_inflow": null
     },
     {
       "code": "600576",
@@ -13950,7 +13950,7 @@
       "is_blue": false,
       "updated": "2026-10-01",
       "mktcap": 213.29,
-      "net_inflow": -0.09332876
+      "net_inflow": null
     },
     {
       "code": "300196",
@@ -16560,7 +16560,7 @@
       "is_blue": false,
       "updated": "2026-10-05",
       "mktcap": 1918.18,
-      "net_inflow": 0.20561165
+      "net_inflow": null
     },
     {
       "code": "688286",
